@@ -18,22 +18,59 @@ const COLORS = {
 };
 
 // Plate geometry constants, in millimetres — measured directly from the
-// supplied number_plate.step (bounding box + layer-height histogram of its
-// CARTESIAN_POINT data): 96 x 28mm footprint, 3.2mm total thickness, a
-// 3.5mm outer corner radius, and a 3-step layer stack (0→2.0 base white,
-// 2.0→2.8 border/ribbon black, 2.8→3.2 text).
+// supplied number_plate.step / key_chain_stl.stl (bounding box, layer-height
+// histogram, and sliced cross-sections at several Z heights): 96 x 28mm
+// footprint, 3.2mm total thickness, 3.5mm outer corner radius, a 3-step
+// layer stack (0→2.0 base white, 2.0→2.8 border/margin black, 2.8→3.2 text).
+//
+// The border is NOT a simple picture-frame + side ribbon (that was wrong).
+// Slicing the real STL at z=2.4 shows: a thin ~1.5mm border strip running
+// the full perimeter, flaring into two much wider black margins at the
+// top-middle and bottom-middle (where the name and contact number sit),
+// joined to the thin strip by 45°-ish chamfers. The vehicle number spans
+// nearly the full width, centered. Name and contact number are each
+// centered horizontally, sitting in the top/bottom margins respectively.
 const PLATE_W = 96;
 const PLATE_H = 28;
 const CORNER_R = 3.5;
-const BORDER_W = 4.0;
+const THIN_BORDER = 1.5; // perimeter border width away from the top/bottom margins
 const BASE_DEPTH = 2.0;
-const TRIM_DEPTH = 0.8; // border + ribbon height above base (2.0 -> 2.8)
+const TRIM_DEPTH = 0.8; // border + margin height above base (2.0 -> 2.8)
 const TEXT_DEPTH = 0.4; // number text height above base (2.8 -> 3.2)
-const NAME_TEXT_DEPTH = 0.4; // name/contact text height above ribbon
+const NAME_TEXT_DEPTH = 0.4; // name/contact text height above the margin
 const HOLE_R = 2.0;
 const HOLE_OFFSET_X = -PLATE_W / 2 + 3.5;
 const HOLE_OFFSET_Y = PLATE_H / 2 - 3.5;
-const RIBBON_FRACTION = 0.36; // portion of plate width used by the name/contact ribbon
+const FILLET_R = 1.6; // small corner rounding applied to the border/margin outline
+
+// The border/margin inner-boundary polygon (where black meets white),
+// traced from the real model and expressed in plate-centred local
+// coordinates (0,0 = plate centre). Top and bottom margins are NOT the
+// same width — the real part has a wider top margin (name) than bottom
+// (contact number).
+const MARGIN_POLY = [
+  [44.63, 12.49],   // top-right: shoulder near corner
+  [23.91, 12.48],   // top-right: chamfer start
+  [16.59, 7.02],     // top flat, right end
+  [-16.59, 7.02],    // top flat, left end
+  [-23.91, 12.48],  // top-left: chamfer end
+  [-44.63, 12.49],  // top-left: shoulder near corner
+  [-46.49, 10.63],  // left edge, top
+  [-46.49, -10.63], // left edge, bottom
+  [-44.63, -12.49], // bottom-left: shoulder near corner
+  [-18.91, -12.48], // bottom-left: chamfer start
+  [-11.59, -7.02],   // bottom flat, left end
+  [11.59, -7.02],    // bottom flat, right end
+  [18.91, -12.48],  // bottom-right: chamfer end
+  [44.63, -12.49],  // bottom-right: shoulder near corner
+  [46.49, -10.63],  // right edge, bottom
+  [46.49, 10.63],   // right edge, top
+];
+// Roughly where the flat top/bottom margins run, for text placement.
+const TOP_MARGIN_Y = 7.02;
+const TOP_MARGIN_HALF_W = 16.59;
+const BOTTOM_MARGIN_Y = -7.02;
+const BOTTOM_MARGIN_HALF_W = 11.59;
 
 let scene, camera, renderer, controls, canvasEl, loadingEl;
 let modelGroup = null;
@@ -62,30 +99,41 @@ function roundedRectShape(w, h, r, holeCenters = []) {
   return shape;
 }
 
-function frameShape(w, h, r, border, holeCenters = []) {
-  const outer = roundedRectShape(w, h, r, holeCenters);
-  const inner = roundedRectShape(w - border * 2, h - border * 2, Math.max(r - border, 0.6));
-  outer.holes.push(new THREE.Path(inner.getPoints(24)));
-  return outer;
+// Builds a THREE.Path/Shape tracing `points` (closed polygon) with a small
+// fillet radius at every vertex, so the traced margin outline isn't razor-
+// sharp at each joint.
+function roundedPolygonPath(points, radius, PathClass = THREE.Path) {
+  const n = points.length;
+  const path = new PathClass();
+  for (let i = 0; i < n; i++) {
+    const prev = points[(i - 1 + n) % n];
+    const curr = points[i];
+    const next = points[(i + 1) % n];
+
+    const toPrev = [prev[0] - curr[0], prev[1] - curr[1]];
+    const toNext = [next[0] - curr[0], next[1] - curr[1]];
+    const lenPrev = Math.hypot(...toPrev);
+    const lenNext = Math.hypot(...toNext);
+    const r = Math.min(radius, lenPrev * 0.4, lenNext * 0.4);
+
+    const pA = [curr[0] + (toPrev[0] / lenPrev) * r, curr[1] + (toPrev[1] / lenPrev) * r];
+    const pB = [curr[0] + (toNext[0] / lenNext) * r, curr[1] + (toNext[1] / lenNext) * r];
+
+    if (i === 0) path.moveTo(pA[0], pA[1]);
+    else path.lineTo(pA[0], pA[1]);
+    path.quadraticCurveTo(curr[0], curr[1], pB[0], pB[1]);
+  }
+  path.closePath();
+  return path;
 }
 
-function ribbonShape(w, h, r, fraction) {
-  // A skewed parallelogram covering the right-hand `fraction` of the plate,
-  // inset from the border, matching the black name/contact panel in the
-  // reference photos.
-  const rw = w * fraction;
-  const x0 = w / 2 - rw - BORDER_W * 1.4;
-  const x1 = w / 2 - BORDER_W * 1.4;
-  const y0 = -h / 2 + BORDER_W * 1.4;
-  const y1 = h / 2 - BORDER_W * 1.4;
-  const skew = h * 0.28;
-  const shape = new THREE.Shape();
-  shape.moveTo(x0 + skew, y0);
-  shape.lineTo(x1, y0);
-  shape.lineTo(x1 - skew, y1);
-  shape.lineTo(x0, y1);
-  shape.closePath();
-  return shape;
+// The black border+margin layer: plate outer outline, minus the traced
+// margin polygon (which becomes white/face), minus the keyring hole.
+function borderMarginShape(holeCenters = []) {
+  const outer = roundedRectShape(PLATE_W, PLATE_H, CORNER_R, holeCenters);
+  const innerHole = roundedPolygonPath(MARGIN_POLY, FILLET_R);
+  outer.holes.push(innerHole);
+  return outer;
 }
 
 function extrude(shape, depth, bevel = false) {
@@ -130,53 +178,49 @@ function buildKeychainGroup(fields, fontObj) {
   baseMesh.userData.exportGroup = "white";
   group.add(baseMesh);
 
-  // --- border frame (black) ---
-  const frame = frameShape(PLATE_W, PLATE_H, CORNER_R, BORDER_W, holeCenters);
-  const frameGeo = extrude(frame, TRIM_DEPTH);
-  frameGeo.translate(0, 0, BASE_DEPTH);
+  // --- border + top/bottom margins (black) ---
+  const border = borderMarginShape(holeCenters);
+  const borderGeo = extrude(border, TRIM_DEPTH);
+  borderGeo.translate(0, 0, BASE_DEPTH);
   const blackMat = new THREE.MeshStandardMaterial({ color: COLORS.black, roughness: 0.5, metalness: 0.05 });
-  const frameMesh = new THREE.Mesh(frameGeo, blackMat);
-  frameMesh.userData.exportGroup = "black";
-  group.add(frameMesh);
-
-  // --- ribbon (black) ---
-  const ribbon = ribbonShape(PLATE_W, PLATE_H, CORNER_R, RIBBON_FRACTION);
-  const ribbonGeo = extrude(ribbon, TRIM_DEPTH);
-  ribbonGeo.translate(0, 0, BASE_DEPTH);
-  const ribbonMesh = new THREE.Mesh(ribbonGeo, blackMat);
-  ribbonMesh.userData.exportGroup = "black";
-  group.add(ribbonMesh);
+  const borderMesh = new THREE.Mesh(borderGeo, blackMat);
+  borderMesh.userData.exportGroup = "black";
+  group.add(borderMesh);
 
   const blackTextGeos = [];
   const redTextGeos = [];
 
-  // --- vehicle number (black, on the white face) ---
+  // --- vehicle number (black, spans nearly the full width, centred) ---
   if (fontObj && fields.vehicleNumber) {
-    const areaW = PLATE_W * (1 - RIBBON_FRACTION) - BORDER_W * 4;
-    const areaH = PLATE_H - BORDER_W * 3.4;
+    const areaW = PLATE_W - 9;
+    const areaH = TOP_MARGIN_Y + Math.abs(BOTTOM_MARGIN_Y) - 1; // fits within the constricted middle channel
     const geo = fitText(fields.vehicleNumber.toUpperCase(), fontObj, areaW, areaH, 8);
     if (geo) {
-      geo.translate(-PLATE_W * RIBBON_FRACTION * 0.55, 0, BASE_DEPTH);
+      geo.translate(0, 0, BASE_DEPTH);
       blackTextGeos.push(geo);
     }
   }
 
-  // --- owner name (red, on ribbon) ---
+  // --- owner name (red, centred in the top margin) ---
   if (fontObj && fields.showName && fields.ownerName) {
-    const areaW = PLATE_W * RIBBON_FRACTION - BORDER_W * 2;
-    const geo = fitText(fields.ownerName.toUpperCase(), fontObj, areaW, PLATE_H * 0.32, 5);
+    const areaW = TOP_MARGIN_HALF_W * 2 * 0.92;
+    const areaH = 3.6;
+    const geo = fitText(fields.ownerName.toUpperCase(), fontObj, areaW, areaH, 5);
     if (geo) {
-      geo.translate(PLATE_W * (0.5 - RIBBON_FRACTION / 2) - BORDER_W * 1.4, PLATE_H * 0.16, BASE_DEPTH + TRIM_DEPTH);
+      const yCenter = (TOP_MARGIN_Y + PLATE_H / 2) / 2;
+      geo.translate(0, yCenter, BASE_DEPTH + TRIM_DEPTH);
       redTextGeos.push(geo);
     }
   }
 
-  // --- contact number (red, on ribbon) ---
+  // --- contact number (red, centred in the bottom margin) ---
   if (fontObj && fields.showContact && fields.contactNumber) {
-    const areaW = PLATE_W * RIBBON_FRACTION - BORDER_W * 2;
-    const geo = fitText(fields.contactNumber, fontObj, areaW, PLATE_H * 0.28, 4.5);
+    const areaW = BOTTOM_MARGIN_HALF_W * 2 * 0.9;
+    const areaH = 3.6;
+    const geo = fitText(fields.contactNumber, fontObj, areaW, areaH, 4.5);
     if (geo) {
-      geo.translate(PLATE_W * (0.5 - RIBBON_FRACTION / 2) - BORDER_W * 1.4, -PLATE_H * 0.18, BASE_DEPTH + TRIM_DEPTH);
+      const yCenter = -(Math.abs(BOTTOM_MARGIN_Y) + PLATE_H / 2) / 2;
+      geo.translate(0, yCenter, BASE_DEPTH + TRIM_DEPTH);
       redTextGeos.push(geo);
     }
   }
