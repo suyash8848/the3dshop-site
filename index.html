@@ -40,6 +40,9 @@
               <div class="carousel-track">
                 <img src="images/product-preview-1.jpg" alt="Number plate keychain, slicer render, view 1" />
                 <img src="images/product-preview-2.jpg" alt="Number plate keychain, slicer render, view 2" />
+                <img src="images/product-preview-3.jpg" alt="Number plate keychain render, yellow accent" />
+                <img src="images/product-preview-4.jpg" alt="Number plate keychain render, green accent" />
+                <img src="images/product-preview-5.jpg" alt="Number plate keychain render, red accent" />
               </div>
               <button class="carousel-nav prev" aria-label="Previous photo">‹</button>
               <button class="carousel-nav next" aria-label="Next photo">›</button>
@@ -58,8 +61,8 @@
 
         <p class="viewer-caption">
           Photos are slicer renders of our own test print. The “Live 3D preview” tab updates as you fill the
-          form, in the same 3 print colours as the real part — white base, black border &amp; vehicle number,
-          red name &amp; contact number. Drag to rotate · scroll to zoom.
+          form, in matching print colours — white base, black border &amp; vehicle number, plus your
+          choice of colour for the name &amp; contact number. Drag to rotate · scroll to zoom.
         </p>
       </div>
 
@@ -78,7 +81,7 @@
 
         <div class="spec-chips">
           <div class="chip"><span class="chip-label">Size</span><span>96 × 28mm</span></div>
-          <div class="chip"><span class="chip-label">Colours</span><span>White · Black · Red</span></div>
+          <div class="chip"><span class="chip-label">Colours</span><span>White · Black · Red/Yellow/Green</span></div>
           <div class="chip"><span class="chip-label">Turnaround</span><span>3–5 days</span></div>
         </div>
 
@@ -90,6 +93,7 @@
             <input id="vehicleNumber" name="vehicleNumber" type="text" maxlength="14"
                    placeholder="MH 12 AB 3456" autocomplete="off" required />
             <div class="field-meta"><span id="vehicleCount">0</span>/14 characters · <span class="dot dot-black"></span> black</div>
+            <p id="vehicleNumberError" class="field-error" hidden>Enter a valid vehicle number, e.g. MH 12 AB 3456</p>
           </div>
 
           <div class="field-toggle">
@@ -99,7 +103,7 @@
             </label>
             <div class="field field-conditional" id="nameField" hidden>
               <input id="ownerName" name="ownerName" type="text" maxlength="15" placeholder="Suyash" autocomplete="off" />
-              <div class="field-meta"><span id="nameCount">0</span>/15 characters · <span class="dot dot-red"></span> red</div>
+              <div class="field-meta"><span id="nameCount">0</span>/15 characters</div>
             </div>
           </div>
 
@@ -110,7 +114,16 @@
             </label>
             <div class="field field-conditional" id="contactField" hidden>
               <input id="contactNumber" name="contactNumber" type="tel" maxlength="10" placeholder="9876543210" autocomplete="off" inputmode="numeric" />
-              <div class="field-meta"><span id="contactCount">0</span>/10 digits · <span class="dot dot-red"></span> red</div>
+              <div class="field-meta"><span id="contactCount">0</span>/10 digits</div>
+            </div>
+          </div>
+
+          <div class="field field-conditional" id="accentColorField" hidden>
+            <label>Name &amp; contact colour</label>
+            <div class="color-swatches" role="radiogroup" aria-label="Name and contact colour">
+              <button type="button" class="swatch is-active" data-color="red" style="--swatch: #c8102e" aria-label="Red"></button>
+              <button type="button" class="swatch" data-color="yellow" style="--swatch: #e8b400" aria-label="Yellow"></button>
+              <button type="button" class="swatch" data-color="green" style="--swatch: #2f9e44" aria-label="Green"></button>
             </div>
           </div>
 

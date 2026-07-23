@@ -1,7 +1,8 @@
 // three-config.js
 // Builds a live, colour-accurate 3D preview of the number plate keychain and
-// can export the current design as three STL files (white / black / red) —
-// one per print colour, matching the real 3-colour print workflow.
+// can export the current design as three STL files (white / black / accent) —
+// one per print colour, matching the real 3-colour print workflow. The
+// accent colour (name + contact number) is selectable — red, yellow, or green.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -13,64 +14,64 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 const COLORS = {
   white: 0xf2f2ef,
   black: 0x161616,
-  red: 0xc8102e,
-  silver: 0xc9cdd1,
 };
 
-// Plate geometry constants, in millimetres — measured directly from the
-// supplied number_plate.step / key_chain_stl.stl (bounding box, layer-height
-// histogram, and sliced cross-sections at several Z heights): 96 x 28mm
-// footprint, 3.2mm total thickness, 3.5mm outer corner radius, a 3-step
-// layer stack (0→2.0 base white, 2.0→2.8 border/margin black, 2.8→3.2 text).
-//
-// The border is NOT a simple picture-frame + side ribbon (that was wrong).
-// Slicing the real STL at z=2.4 shows: a thin ~1.5mm border strip running
-// the full perimeter, flaring into two much wider black margins at the
-// top-middle and bottom-middle (where the name and contact number sit),
-// joined to the thin strip by 45°-ish chamfers. The vehicle number spans
-// nearly the full width, centered. Name and contact number are each
-// centered horizontally, sitting in the top/bottom margins respectively.
+// Selectable name/contact accent colours (swatches in the form map to these).
+const ACCENT_COLORS = {
+  red: 0xc8102e,
+  yellow: 0xe8b400,
+  green: 0x2f9e44,
+};
+
+// Plate geometry constants, in millimetres — updated to match the supplied
+// engineering drawing exactly: 96 x 28mm footprint, 3.5mm outer corner
+// radius (confirmed by direct CAD measurement), Ø4.00mm keyring hole
+// (2.00mm radius, also confirmed by CAD measurement), 1.50mm thin
+// perimeter border, 7.00mm deep top/bottom margins with a 35.00mm-wide
+// flat top margin and 25.00mm-wide flat bottom margin (asymmetric —
+// matches the drawing), joined to the thin border by 45°/135° chamfers.
+// Vehicle number text targets a 10mm bounding height (drawing's "5.00"
+// half-height dimension).
 const PLATE_W = 96;
 const PLATE_H = 28;
-const CORNER_R = 3.5;
+const CORNER_R = 3.5; // confirmed by direct CAD measurement (outer plate corner)
 const THIN_BORDER = 1.5; // perimeter border width away from the top/bottom margins
 const BASE_DEPTH = 2.0;
 const TRIM_DEPTH = 0.8; // border + margin height above base (2.0 -> 2.8)
 const TEXT_DEPTH = 0.4; // number text height above base (2.8 -> 3.2)
 const NAME_TEXT_DEPTH = 0.4; // name/contact text height above the margin
-const HOLE_R = 2.0;
+const HOLE_R = 2.0; // Ø4.00mm per drawing
 const HOLE_OFFSET_X = -PLATE_W / 2 + 3.5;
 const HOLE_OFFSET_Y = PLATE_H / 2 - 3.5;
 const FILLET_R = 1.6; // small corner rounding applied to the border/margin outline
 
-// The border/margin inner-boundary polygon (where black meets white),
-// traced from the real model and expressed in plate-centred local
-// coordinates (0,0 = plate centre). Top and bottom margins are NOT the
-// same width — the real part has a wider top margin (name) than bottom
-// (contact number).
+// The border/margin inner-boundary polygon (where black meets white), in
+// plate-centred local coordinates (0,0 = plate centre). Flat-segment
+// half-widths and margin depth come directly from the drawing; the chamfer/
+// shoulder points (not individually dimensioned there) keep the same
+// proportions traced from the real STL.
+const TOP_MARGIN_Y = 7.0;
+const TOP_MARGIN_HALF_W = 17.5; // 35.00mm wide, per drawing
+const BOTTOM_MARGIN_Y = -7.0;
+const BOTTOM_MARGIN_HALF_W = 12.5; // 25.00mm wide, per drawing
 const MARGIN_POLY = [
-  [44.63, 12.49],   // top-right: shoulder near corner
-  [23.91, 12.48],   // top-right: chamfer start
-  [16.59, 7.02],     // top flat, right end
-  [-16.59, 7.02],    // top flat, left end
-  [-23.91, 12.48],  // top-left: chamfer end
-  [-44.63, 12.49],  // top-left: shoulder near corner
-  [-46.49, 10.63],  // left edge, top
-  [-46.49, -10.63], // left edge, bottom
-  [-44.63, -12.49], // bottom-left: shoulder near corner
-  [-18.91, -12.48], // bottom-left: chamfer start
-  [-11.59, -7.02],   // bottom flat, left end
-  [11.59, -7.02],    // bottom flat, right end
-  [18.91, -12.48],  // bottom-right: chamfer end
-  [44.63, -12.49],  // bottom-right: shoulder near corner
-  [46.49, -10.63],  // right edge, bottom
-  [46.49, 10.63],   // right edge, top
+  [44.6, 12.5],    // top-right: shoulder near corner
+  [23.9, 12.5],    // top-right: chamfer start
+  [TOP_MARGIN_HALF_W, TOP_MARGIN_Y],   // top flat, right end
+  [-TOP_MARGIN_HALF_W, TOP_MARGIN_Y],  // top flat, left end
+  [-23.9, 12.5],   // top-left: chamfer end
+  [-44.6, 12.5],   // top-left: shoulder near corner
+  [-46.5, 10.64],  // left edge, top
+  [-46.5, -10.64], // left edge, bottom
+  [-44.6, -12.5],  // bottom-left: shoulder near corner
+  [-18.9, -12.5],  // bottom-left: chamfer start
+  [-BOTTOM_MARGIN_HALF_W, BOTTOM_MARGIN_Y], // bottom flat, left end
+  [BOTTOM_MARGIN_HALF_W, BOTTOM_MARGIN_Y],  // bottom flat, right end
+  [18.9, -12.5],   // bottom-right: chamfer end
+  [44.6, -12.5],   // bottom-right: shoulder near corner
+  [46.5, -10.64],  // right edge, bottom
+  [46.5, 10.64],   // right edge, top
 ];
-// Roughly where the flat top/bottom margins run, for text placement.
-const TOP_MARGIN_Y = 7.02;
-const TOP_MARGIN_HALF_W = 16.59;
-const BOTTOM_MARGIN_Y = -7.02;
-const BOTTOM_MARGIN_HALF_W = 11.59;
 
 let scene, camera, renderer, controls, canvasEl, loadingEl;
 let modelGroup = null;
@@ -193,7 +194,7 @@ function buildKeychainGroup(fields, fontObj) {
   // --- vehicle number (black, spans nearly the full width, centred) ---
   if (fontObj && fields.vehicleNumber) {
     const areaW = PLATE_W - 9;
-    const areaH = TOP_MARGIN_Y + Math.abs(BOTTOM_MARGIN_Y) - 1; // fits within the constricted middle channel
+    const areaH = 10; // matches the drawing's 5.00mm half-height dimension
     const geo = fitText(fields.vehicleNumber.toUpperCase(), fontObj, areaW, areaH, 8);
     if (geo) {
       geo.translate(0, 0, BASE_DEPTH);
@@ -233,19 +234,12 @@ function buildKeychainGroup(fields, fontObj) {
   }
   if (redTextGeos.length) {
     const merged = redTextGeos.length > 1 ? mergeGeometries(redTextGeos) : redTextGeos[0];
-    const redMat = new THREE.MeshStandardMaterial({ color: COLORS.red, roughness: 0.45, metalness: 0.05 });
-    const mesh = new THREE.Mesh(merged, redMat);
-    mesh.userData.exportGroup = "red";
+    const accentHex = ACCENT_COLORS[fields.accentColor] || ACCENT_COLORS.red;
+    const accentMat = new THREE.MeshStandardMaterial({ color: accentHex, roughness: 0.45, metalness: 0.05 });
+    const mesh = new THREE.Mesh(merged, accentMat);
+    mesh.userData.exportGroup = "accent";
     group.add(mesh);
   }
-
-  // --- keyring ---
-  const ringGeo = new THREE.TorusGeometry(4.4, 0.55, 10, 40);
-  const ringMat = new THREE.MeshStandardMaterial({ color: COLORS.silver, roughness: 0.25, metalness: 0.85 });
-  const ring = new THREE.Mesh(ringGeo, ringMat);
-  ring.position.set(HOLE_OFFSET_X, PLATE_H / 2 + 3.2, BASE_DEPTH / 2);
-  ring.userData.exportGroup = null; // decorative only, not part of the printed file
-  group.add(ring);
 
   group.rotation.x = -Math.PI / 2.35;
   group.position.z = -1;
@@ -362,7 +356,7 @@ function arrayBufferToBase64(buf) {
 export function exportSTLByColor() {
   if (!modelGroup) return null;
   const exporter = new STLExporter();
-  const groups = { white: [], black: [], red: [] };
+  const groups = { white: [], black: [], accent: [] };
 
   modelGroup.traverse((obj) => {
     if (obj.isMesh && obj.userData.exportGroup) {

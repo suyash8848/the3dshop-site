@@ -15,7 +15,7 @@ const SHOP_EMAIL = "theprintingbusiness2026@gmail.com";
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    const { vehicleNumber, ownerName, contactNumber, customerEmail, files } = body;
+    const { vehicleNumber, ownerName, contactNumber, accentColor, customerEmail, files } = body;
 
     if (!vehicleNumber || !customerEmail) {
       return jsonOutput({ ok: false, error: "Missing vehicle number or email." });
@@ -34,6 +34,7 @@ function doPost(e) {
       `Vehicle number: ${vehicleNumber}`,
       `Owner name: ${ownerName || "(not included)"}`,
       `Contact number on plate: ${contactNumber || "(not included)"}`,
+      `Name/contact colour: ${accentColor || "(n/a)"}`,
       `Customer email: ${customerEmail}`,
       `Submitted: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`,
     ].join("\n");
@@ -41,7 +42,7 @@ function doPost(e) {
     MailApp.sendEmail({
       to: SHOP_EMAIL,
       subject: `New keychain order — ${vehicleNumber}`,
-      body: `New order from the site:\n\n${summary}\n\nSTL files attached (one per print colour, white/black/red).`,
+      body: `New order from the site:\n\n${summary}\n\nSTL files attached (one per print colour: white/black/${accentColor || "accent"}).`,
       attachments,
     });
 

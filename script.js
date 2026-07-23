@@ -50,6 +50,7 @@ initViewer(canvas, loadingEl);
 /* ---------------- Form ---------------- */
 const vehicleInput = document.getElementById("vehicleNumber");
 const vehicleCount = document.getElementById("vehicleCount");
+const vehicleNumberError = document.getElementById("vehicleNumberError");
 const toggleName = document.getElementById("toggleName");
 const nameField = document.getElementById("nameField");
 const ownerNameInput = document.getElementById("ownerName");
@@ -58,10 +59,43 @@ const toggleContact = document.getElementById("toggleContact");
 const contactField = document.getElementById("contactField");
 const contactInput = document.getElementById("contactNumber");
 const contactCount = document.getElementById("contactCount");
+const accentColorField = document.getElementById("accentColorField");
+const swatches = Array.from(document.querySelectorAll(".swatch"));
 const emailInput = document.getElementById("email");
 const form = document.getElementById("order-form");
 const submitBtn = document.getElementById("submitBtn");
 const formStatus = document.getElementById("formStatus");
+
+let accentColor = "red";
+
+// Indian vehicle registration format: 2-letter state code, 1-2 digit RTO
+// code, optional 1-3 letter series, 4-digit unique number — spaces/hyphens
+// optional between groups (e.g. "MH 12 AB 3456", "MH41C0002").
+const VEHICLE_NUMBER_PATTERN = /^[A-Z]{2}[\s-]?[0-9]{1,2}[\s-]?[A-Z]{0,3}[\s-]?[0-9]{4}$/;
+
+function isValidVehicleNumber(value) {
+  return VEHICLE_NUMBER_PATTERN.test(value.trim().toUpperCase());
+}
+
+function checkVehicleNumberValidity() {
+  const value = vehicleInput.value.trim();
+  const valid = !value || isValidVehicleNumber(value);
+  vehicleInput.classList.toggle("is-invalid", !valid);
+  vehicleNumberError.hidden = valid;
+  return !value || valid; // empty is handled separately (required-field check on submit)
+}
+
+function updateAccentFieldVisibility() {
+  accentColorField.hidden = !(toggleName.checked || toggleContact.checked);
+}
+
+swatches.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    accentColor = btn.dataset.color;
+    swatches.forEach((s) => s.classList.toggle("is-active", s === btn));
+    scheduleUpdate();
+  });
+});
 
 function currentFields() {
   return {
@@ -70,6 +104,7 @@ function currentFields() {
     ownerName: ownerNameInput.value.trim(),
     showContact: toggleContact.checked,
     contactNumber: contactInput.value.trim(),
+    accentColor,
   };
 }
 
@@ -82,13 +117,16 @@ function scheduleUpdate() {
 vehicleInput.addEventListener("input", () => {
   vehicleInput.value = vehicleInput.value.toUpperCase();
   vehicleCount.textContent = vehicleInput.value.length;
+  checkVehicleNumberValidity();
   scheduleUpdate();
 });
+vehicleInput.addEventListener("blur", checkVehicleNumberValidity);
 
 toggleName.addEventListener("change", () => {
   nameField.hidden = !toggleName.checked;
   if (!toggleName.checked) ownerNameInput.value = "";
   nameCount.textContent = ownerNameInput.value.length;
+  updateAccentFieldVisibility();
   scheduleUpdate();
 });
 ownerNameInput.addEventListener("input", () => {
@@ -100,6 +138,7 @@ toggleContact.addEventListener("change", () => {
   contactField.hidden = !toggleContact.checked;
   if (!toggleContact.checked) contactInput.value = "";
   contactCount.textContent = contactInput.value.length;
+  updateAccentFieldVisibility();
   scheduleUpdate();
 });
 contactInput.addEventListener("input", () => {
@@ -122,6 +161,12 @@ form.addEventListener("submit", async (e) => {
   const email = emailInput.value.trim();
 
   if (!fields.vehicleNumber) { setStatus("Add your vehicle number first.", "is-error"); vehicleInput.focus(); return; }
+  if (!isValidVehicleNumber(fields.vehicleNumber)) {
+    checkVehicleNumberValidity();
+    setStatus("That doesn't look like a valid vehicle number — check the format (e.g. MH 12 AB 3456).", "is-error");
+    vehicleInput.focus();
+    return;
+  }
   if (!email) { setStatus("Add your email so we can reach you.", "is-error"); emailInput.focus(); return; }
   if (!isReady()) { setStatus("The 3D preview is still loading — one moment and try again.", "is-error"); return; }
 
@@ -138,11 +183,12 @@ form.addEventListener("submit", async (e) => {
       vehicleNumber: fields.vehicleNumber,
       ownerName: fields.showName ? fields.ownerName : "",
       contactNumber: fields.showContact ? fields.contactNumber : "",
+      accentColor: fields.showName || fields.showContact ? fields.accentColor : "",
       customerEmail: email,
       files: {
         white_base: stlFiles.white,
         black_border_number: stlFiles.black,
-        red_name_contact: stlFiles.red,
+        accent_name_contact: stlFiles.accent,
       },
     };
 
@@ -164,7 +210,12 @@ form.addEventListener("submit", async (e) => {
     form.reset();
     toggleName.checked = false; nameField.hidden = true;
     toggleContact.checked = false; contactField.hidden = true;
+    accentColor = "red";
+    swatches.forEach((s) => s.classList.toggle("is-active", s.dataset.color === "red"));
+    updateAccentFieldVisibility();
     vehicleCount.textContent = "0"; nameCount.textContent = "0"; contactCount.textContent = "0";
+    vehicleInput.classList.remove("is-invalid");
+    vehicleNumberError.hidden = true;
     scheduleUpdate();
   } catch (err) {
     setStatus(err.message || "Something went wrong. Please try again or DM us on Instagram.", "is-error");
