@@ -6,7 +6,21 @@ straight into your `the3dshop-site` repo (keep your own `images/logo.svg`
 if you already have a real brand mark — don't overwrite it with the
 placeholder one included here unless you want to).
 
-## What's actually working right now
+## ⚠️ The live site is NOT running this code yet
+
+When I checked https://the3dshop.in/ it was still serving the **original
+90 × 22mm** version with no colour picker and no validation — i.e. none
+of the rebuild from this whole conversation is deployed. **Every fix
+we've discussed only exists in these files, not on the live site.**
+
+So if a change "isn't working" on the live site, the first thing to rule
+out is deployment: push `index.html`, `script.js`, `three-config.js`,
+`styles.css`, and `apps-script-Code.gs` to the repo's `main` branch, let
+GitHub Pages redeploy, then hard-refresh (Ctrl/Cmd+Shift+R) to clear the
+cached old version. Until that's confirmed, we'd be debugging a site that
+isn't running any of this code.
+
+
 
 - **Photos tab** — a small carousel of your two Bambu Studio slicer renders.
 - **Live 3D preview tab** — a real, live Three.js model that rebuilds as you
@@ -157,36 +171,42 @@ the preview uses your exact typeface.
 - **Fonts/Three.js load from CDN** (jsDelivr), so the page needs internet
   access to render — fine for a public website, just flagging it.
 
-## Round: hole overlap, name/contact swap, corner precision
+## Round: hole artifact properly diagnosed and fixed
 
-- **Hole "poking out" — found and fixed.** I ran the actual clearance
-  numbers: at the previous 3.5mm inset, the keyring hole geometrically
-  **overlapped the black margin cutout by ~0.5mm**. That overlap creates
-  a self-intersecting hole edge in the black layer, which is exactly the
-  kind of thing that renders as a spike/artifact right at the hole.
-  Moved the hole to a 4.2mm inset — verified by direct point-to-polygon
-  distance calculation to give ~2.2mm clearance from the outer edge and
-  ~0.5mm clearance from the margin boundary, comfortably inside both.
-- **Contact number and owner name swapped.** Contact number is now in
-  the (wider) top margin; owner name is now in the (narrower) bottom
-  margin.
-- **Corner rounding now uses true circular arcs**, not a quadratic-bezier
-  approximation. Same 3.5mm radius as before, but now geometrically
-  exact — this also removes any ambiguity for hole-clearance math near
-  the corner.
+The previous two attempts at the hole were wrong. I re-sliced your STL and
+measured the real geometry directly instead of guessing:
 
-**Important — about "corner radius still not correct":** I fetched
-the live site (the3dshop.in) to check, and it's currently showing
-**90 × 22mm** sizing and no colour picker — that's the *original*
-pre-rebuild version, not any of the files from this conversation. None
-of the fixes across this whole thread (96×28mm re-dimension, the traced
-margin shape, the colour picker, the validation, or this round's corner/
-hole fixes) appear to be live yet. Before chasing further visual bugs
-on the live site, it's worth pushing `index.html`, `script.js`,
-`three-config.js`, `styles.css`, and `apps-script-Code.gs` to the
-repo's `main` branch and confirming GitHub Pages has redeployed —
-otherwise we'd be debugging a version of the site that isn't running
-any of this code.
+- **The hole is concentric with the top-left rounded corner.** The outer
+  corner arc fits center (3.5, 24.5) radius 3.5mm; the hole loop sits at
+  center (3.48, 24.53) radius 2.0mm — the *same point*, 3.5mm in from each
+  edge. My earlier "move it to 4.2mm inset" was simply wrong.
+- **The hole sits right on the black/white boundary.** Sampling material
+  height around the hole rim: the corner side (up-and-left) is black
+  border; the interior side (down-and-right) is white base. The black
+  wraps the corner side of the hole in a C-shape.
+- **Root cause of the "poking out":** my code cut the keyring hole as a
+  separate full circle *and* cut the margin polygon, and near the corner
+  those two cut-paths overlapped — two overlapping holes in one extrude
+  is a self-intersecting profile, which is what rendered as a spike.
+- **The fix:** on the black layer the hole is no longer a separate circle.
+  The margin cutout's top-left corner now routes as an **arc around the
+  hole**, merging the hole and the cutout into one continuous boundary —
+  exactly how your STL is modelled. I verified the resulting profile in a
+  standalone geometry check: zero self-intersections, nothing outside the
+  plate outline, corner stays black, hole interior stays white. The white
+  base layer still cuts the hole as a normal circle (it has 1.5mm
+  clearance to the outer edge, also verified).
+- **Margin polygon** replaced with coordinates traced directly from the
+  STL cross-section (Douglas–Peucker simplified), so the whole black shape
+  now follows the real part rather than drawing-derived estimates.
+- **Contact number / owner name swap** kept: contact on top, name on
+  bottom.
+
+I could not run an actual Three.js render here (no network to load the
+library), so I validated the 2D extrude profile mathematically instead —
+that's the layer the artifact lives in. Please still eyeball the live
+preview once it's deployed.
+
 
 ## Files in this drop
 ```

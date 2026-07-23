@@ -40,44 +40,44 @@ const BASE_DEPTH = 2.0;
 const TRIM_DEPTH = 0.8; // border + margin height above base (2.0 -> 2.8)
 const TEXT_DEPTH = 0.4; // number text height above base (2.8 -> 3.2)
 const NAME_TEXT_DEPTH = 0.4; // name/contact text height above the margin
-const HOLE_R = 2.0; // Ø4.00mm per drawing
-// Inset 4.2mm from the two nearest edges — NOT the same as the corner
-// radius. At the previously-used 3.5mm inset, the hole geometrically
-// overlapped the black margin cutout by ~0.5mm (verified by computing
-// point-to-polygon clearance directly), producing a self-intersecting
-// hole edge in the black layer that rendered as a spike/artifact right
-// at the hole. 4.2mm gives ~2.2mm clearance from the outer edge and
-// ~0.5mm clearance from the margin boundary — comfortably inside both.
-const HOLE_OFFSET_X = -PLATE_W / 2 + 4.2;
-const HOLE_OFFSET_Y = PLATE_H / 2 - 4.2;
+const HOLE_R = 2.0; // Ø4.00mm, measured from the STL (hole loop r_avg = 1.999)
+// The keyring hole is CONCENTRIC with the top-left rounded corner — verified
+// by slicing the STL: the outer corner arc fits center (3.5, 24.5) r=3.5mm,
+// and the hole loop sits at center (3.48, 24.53) r=2.0mm, i.e. the same
+// point, 3.5mm in from each edge. It sits entirely inside solid black corner
+// material; the white margin cutout stays well clear of it (see MARGIN_POLY).
+// Model coords: x = -(48-3.5) = -44.5, y = +(14-3.5) = +10.5.
+const HOLE_OFFSET_X = -PLATE_W / 2 + CORNER_R;
+const HOLE_OFFSET_Y = PLATE_H / 2 - CORNER_R;
 const FILLET_R = 1.6; // small corner rounding applied to the border/margin outline
 
-// The border/margin inner-boundary polygon (where black meets white), in
-// plate-centred local coordinates (0,0 = plate centre). Flat-segment
-// half-widths and margin depth come directly from the drawing; the chamfer/
-// shoulder points (not individually dimensioned there) keep the same
-// proportions traced from the real STL.
+// The border/margin inner-boundary polygon (where black meets white),
+// traced directly from the STL at the z=2.4 (black-layer) cross-section and
+// simplified with Douglas–Peucker, expressed in plate-centred local
+// coordinates (0,0 = plate centre). Left/right edges sit 1.5mm in from the
+// outer edge (the thin border); the top margin is wider than the bottom.
 const TOP_MARGIN_Y = 7.0;
-const TOP_MARGIN_HALF_W = 17.5; // 35.00mm wide, per drawing
+const TOP_MARGIN_HALF_W = 16.5; // ~33mm flat, per STL trace
 const BOTTOM_MARGIN_Y = -7.0;
-const BOTTOM_MARGIN_HALF_W = 12.5; // 25.00mm wide, per drawing
+const BOTTOM_MARGIN_HALF_W = 11.5; // ~23mm flat, per STL trace
 const MARGIN_POLY = [
-  [44.6, 12.5],    // top-right: shoulder near corner
-  [23.9, 12.5],    // top-right: chamfer start
-  [TOP_MARGIN_HALF_W, TOP_MARGIN_Y],   // top flat, right end
-  [-TOP_MARGIN_HALF_W, TOP_MARGIN_Y],  // top flat, left end
-  [-23.9, 12.5],   // top-left: chamfer end
-  [-44.6, 12.5],   // top-left: shoulder near corner
-  [-46.5, 10.64],  // left edge, top
-  [-46.5, -10.64], // left edge, bottom
-  [-44.6, -12.5],  // bottom-left: shoulder near corner
-  [-18.9, -12.5],  // bottom-left: chamfer start
-  [-BOTTOM_MARGIN_HALF_W, BOTTOM_MARGIN_Y], // bottom flat, left end
-  [BOTTOM_MARGIN_HALF_W, BOTTOM_MARGIN_Y],  // bottom flat, right end
-  [18.9, -12.5],   // bottom-right: chamfer end
-  [44.6, -12.5],   // bottom-right: shoulder near corner
-  [46.5, -10.64],  // right edge, bottom
-  [46.5, 10.64],   // right edge, top
+  [-46.5, -10.5],
+  [-46.5, 10.7],
+  [-45.0, 12.44],
+  [-23.58, 12.42],
+  [-16.26, 7.0],
+  [16.59, 7.02],
+  [24.07, 12.49],
+  [44.76, 12.48],
+  [46.48, 10.76],
+  [46.5, -10.5],
+  [44.89, -12.46],
+  [18.91, -12.48],
+  [11.26, -7.0],
+  [-11.76, -7.05],
+  [-18.91, -12.48],
+  [-44.5, -12.5],
+  [-46.49, -10.63],
 ];
 
 let scene, camera, renderer, controls, canvasEl, loadingEl;
@@ -139,13 +139,80 @@ function roundedPolygonPath(points, radius, PathClass = THREE.Path) {
   return path;
 }
 
-// The black border+margin layer: plate outer outline, minus the traced
-// margin polygon (which becomes white/face), minus the keyring hole.
-function borderMarginShape(holeCenters = []) {
-  const outer = roundedRectShape(PLATE_W, PLATE_H, CORNER_R, holeCenters);
-  const innerHole = roundedPolygonPath(MARGIN_POLY, FILLET_R);
+// The black border+margin layer. The keyring hole sits right on the
+// black/white boundary at the top-left corner: the black border wraps the
+// corner-side of the hole, white base is on the interior side. Cutting a
+// separate full circle here (while the margin polygon also cuts the same
+// area) produces two overlapping hole paths -> a self-intersecting extrude,
+// which is the "poking out" artifact. Instead we build ONE continuous inner
+// boundary: the traced margin polygon, but with its top-left corner routed
+// as an arc around the keyring hole, so the hole and the margin cutout are a
+// single merged cut — exactly as the real STL is modelled.
+function borderMarginShape() {
+  const outer = roundedRectShape(PLATE_W, PLATE_H, CORNER_R); // no separate hole here
+  const innerHole = marginPathWithKeyringNotch();
   outer.holes.push(innerHole);
   return outer;
+}
+
+// Traces MARGIN_POLY as a rounded path, but where the polygon passes the
+// top-left corner it detours along an arc around the keyring hole, merging
+// the hole into the cutout as a single closed loop.
+function marginPathWithKeyringNotch() {
+  const path = new THREE.Path();
+  const n = MARGIN_POLY.length;
+
+  // The two margin vertices that bracket the keyring corner are the first
+  // ([-46.5,-10.5]) ... actually the top-left run is between the vertices
+  // near (-46.5, 10.7) and (-45.0, 12.44). We detour there.
+  // Simpler + robust: walk the polygon; when a segment's midpoint is within
+  // (HOLE_R + 1.2) of the hole centre, replace that stretch with an arc that
+  // bulges inward around the hole.
+  const cx = HOLE_OFFSET_X, cy = HOLE_OFFSET_Y;
+  const near = (p) => Math.hypot(p[0] - cx, p[1] - cy) < HOLE_R + 2.2;
+
+  // Find the contiguous run of vertices near the hole.
+  let firstNear = -1, lastNear = -1;
+  for (let i = 0; i < n; i++) {
+    if (near(MARGIN_POLY[i])) { if (firstNear < 0) firstNear = i; lastNear = i; }
+  }
+
+  if (firstNear < 0) {
+    // Hole not near the polygon (shouldn't happen) — fall back to plain trace.
+    return roundedPolygonPath(MARGIN_POLY, FILLET_R);
+  }
+
+  // Build the path: normal rounded corners for vertices outside the run,
+  // then an arc around the hole to bridge the gap.
+  const before = MARGIN_POLY[(firstNear - 1 + n) % n];
+  const after = MARGIN_POLY[(lastNear + 1) % n];
+
+  // entry/exit points where the arc meets the polygon, projected onto the
+  // hole circle from the before/after vertices.
+  const angTo = (p) => Math.atan2(p[1] - cy, p[0] - cx);
+  const entryAng = angTo(before);
+  const exitAng = angTo(after);
+
+  // Start tracing from `after`, around the polygon the "long way", back to
+  // `before`, then close with the arc around the hole.
+  let started = false;
+  for (let k = 0; k < n; k++) {
+    const idx = (lastNear + 1 + k) % n;
+    if (idx === firstNear) break; // stop before re-entering the near-run
+    const p = MARGIN_POLY[idx];
+    if (!started) { path.moveTo(p[0], p[1]); started = true; }
+    else path.lineTo(p[0], p[1]);
+  }
+  // now at `before`; draw arc around the hole from entryAng to exitAng.
+  // Route it clockwise (decreasing angle) so the cutout bulges toward the
+  // corner side of the hole — leaving solid black wrapping the corner and
+  // white on the interior side, exactly as the STL is built. (Verified:
+  // this direction leaves the corner black and produces no self-crossing.)
+  let sweep = exitAng - entryAng;
+  while (sweep > 0) sweep -= Math.PI * 2; // force clockwise
+  path.absarc(cx, cy, HOLE_R, entryAng, entryAng + sweep, true);
+  path.closePath();
+  return path;
 }
 
 function extrude(shape, depth, bevel = false) {
@@ -191,7 +258,7 @@ function buildKeychainGroup(fields, fontObj) {
   group.add(baseMesh);
 
   // --- border + top/bottom margins (black) ---
-  const border = borderMarginShape(holeCenters);
+  const border = borderMarginShape();
   const borderGeo = extrude(border, TRIM_DEPTH);
   borderGeo.translate(0, 0, BASE_DEPTH);
   const blackMat = new THREE.MeshStandardMaterial({ color: COLORS.black, roughness: 0.5, metalness: 0.05 });
