@@ -17,17 +17,22 @@ const COLORS = {
   silver: 0xc9cdd1,
 };
 
-// Plate geometry constants, in millimetres.
-const PLATE_W = 90;
-const PLATE_H = 22;
-const CORNER_R = 3.2;
-const BORDER_W = 2.4;
-const BASE_DEPTH = 1.6;
-const TRIM_DEPTH = 0.7; // border + ribbon height above base
-const TEXT_DEPTH = 0.5; // number text height above base
-const NAME_TEXT_DEPTH = 0.45; // name/contact text height above ribbon
-const HOLE_R = 2.1;
-const HOLE_OFFSET_X = -PLATE_W / 2 + 6.2;
+// Plate geometry constants, in millimetres — measured directly from the
+// supplied number_plate.step (bounding box + layer-height histogram of its
+// CARTESIAN_POINT data): 96 x 28mm footprint, 3.2mm total thickness, a
+// 3.5mm outer corner radius, and a 3-step layer stack (0→2.0 base white,
+// 2.0→2.8 border/ribbon black, 2.8→3.2 text).
+const PLATE_W = 96;
+const PLATE_H = 28;
+const CORNER_R = 3.5;
+const BORDER_W = 4.0;
+const BASE_DEPTH = 2.0;
+const TRIM_DEPTH = 0.8; // border + ribbon height above base (2.0 -> 2.8)
+const TEXT_DEPTH = 0.4; // number text height above base (2.8 -> 3.2)
+const NAME_TEXT_DEPTH = 0.4; // name/contact text height above ribbon
+const HOLE_R = 2.0;
+const HOLE_OFFSET_X = -PLATE_W / 2 + 3.5;
+const HOLE_OFFSET_Y = PLATE_H / 2 - 3.5;
 const RIBBON_FRACTION = 0.36; // portion of plate width used by the name/contact ribbon
 
 let scene, camera, renderer, controls, canvasEl, loadingEl;
@@ -115,7 +120,7 @@ function fitText(str, font, maxWidth, maxHeight, sizeGuess) {
 
 function buildKeychainGroup(fields, fontObj) {
   const group = new THREE.Group();
-  const holeCenters = [[HOLE_OFFSET_X, 0, HOLE_R]];
+  const holeCenters = [[HOLE_OFFSET_X, HOLE_OFFSET_Y, HOLE_R]];
 
   // --- base plate (white) ---
   const baseShape = roundedRectShape(PLATE_W, PLATE_H, CORNER_R, holeCenters);
@@ -194,7 +199,7 @@ function buildKeychainGroup(fields, fontObj) {
   const ringGeo = new THREE.TorusGeometry(4.4, 0.55, 10, 40);
   const ringMat = new THREE.MeshStandardMaterial({ color: COLORS.silver, roughness: 0.25, metalness: 0.85 });
   const ring = new THREE.Mesh(ringGeo, ringMat);
-  ring.position.set(HOLE_OFFSET_X, PLATE_H / 2 + 4.6, BASE_DEPTH / 2);
+  ring.position.set(HOLE_OFFSET_X, PLATE_H / 2 + 3.2, BASE_DEPTH / 2);
   ring.userData.exportGroup = null; // decorative only, not part of the printed file
   group.add(ring);
 
@@ -272,7 +277,11 @@ export function initViewer(canvas, loadingElement) {
 
   const loader = new FontLoader();
   loader.load(
-    "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/fonts/helvetiker_bold.typeface.json",
+    // Clean, neutral sans-serif (Droid Sans Bold) — swap this URL for a
+    // converted version of your exact licensed font if you have one; see
+    // README-DEPLOY.md for how to convert a .ttf to the typeface.json
+    // format this loader expects.
+    "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/fonts/droid/droid_sans_bold.typeface.json",
     (loadedFont) => {
       font = loadedFont;
       ready = true;
