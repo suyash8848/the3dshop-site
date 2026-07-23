@@ -1,309 +1,178 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The 3D Shop — Precision-Printed Objects, Made in Pune</title>
-<meta name="description" content="Small-batch, precision 3D-printed objects for everyday carry and the home. Designed and printed in Pune, India. Enquire on Instagram — no cart, no middlemen.">
-
-<!-- Open Graph -->
-<meta property="og:title" content="The 3D Shop — Precision-Printed Objects">
-<meta property="og:description" content="Small-batch 3D-printed objects, designed and finished by hand in Pune, India.">
-<meta property="og:image" content="images/logo.png">
-<meta property="og:type" content="website">
-
-<link rel="icon" type="image/png" href="images/logo.png">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Custom Number Plate Keychain — The 3D Shop</title>
+<meta name="description" content="A 3D-printed number plate keychain with your vehicle number, name and contact number — preview it in 3D, then send your design straight to us." />
+<link rel="icon" href="images/logo.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-<!-- ============ HEADER ============ -->
 <header class="site-header">
-  <div class="wrap">
-    <a href="#top" class="brand">
-      <img src="images/logo.png" alt="The 3D Shop logo">
-      <span class="brand-word">THE 3D<span>SHOP</span></span>
-    </a>
-    <nav class="main-nav" id="mainNav">
-      <a href="#collection">Collection</a>
-      <a href="#process">Process</a>
-      <a href="#about">About</a>
-      <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="nav-cta">Enquire on Instagram</a>
-    </nav>
-    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false"><span></span></button>
-  </div>
+  <a href="#top" class="brand">
+    <img src="images/logo.svg" alt="" class="brand-mark" />
+    <span>THE 3D SHOP</span>
+  </a>
+  <div class="header-meta">Pune, India · Made to order</div>
 </header>
 
-<!-- ============ HERO ============ -->
-<section class="hero plate-grid" id="top">
-  <div class="wrap">
-    <span class="hero-eyebrow">Pune, India — designed &amp; printed to order</span>
-    <h1>Everyday objects, <em>engineered</em> like instruments.</h1>
-    <p class="hero-sub">The 3D Shop designs and prints small-batch objects for your desk, your door, and the walls in between — precision parts finished by hand, not mass-tooled plastic.</p>
-    <div class="hero-actions">
-      <a href="#collection" class="btn btn-primary">View the collection ↓</a>
-      <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-ghost">Enquire on Instagram</a>
-    </div>
-    <div class="hero-specs">
-      <div><div class="k">Layer height</div><div class="v">0.12mm</div></div>
-      <div><div class="k">Materials</div><div class="v">PETG · PLA‑CF · TPU</div></div>
-      <div><div class="k">Batch size</div><div class="v">1–6 units</div></div>
-    </div>
-  </div>
-</section>
+<main id="top">
 
-<!-- ============ COLLECTION ============ -->
-<section class="section" id="collection">
-  <div class="wrap">
-    <div class="section-head">
-      <div>
-        <span class="section-tag">The Collection · 12 pieces</span>
-        <h2>Object studies, printed in small runs.</h2>
+  <section class="hero">
+    <div class="hero-inner">
+
+      <!-- LEFT: viewer -->
+      <div class="viewer-col">
+        <div class="viewer-tabs" role="tablist">
+          <button class="viewer-tab is-active" data-tab="photos" role="tab" aria-selected="true">Photos</button>
+          <button class="viewer-tab" data-tab="live" role="tab" aria-selected="false">Live 3D preview</button>
+        </div>
+
+        <div class="viewer-stage">
+
+          <div class="viewer-panel is-active" data-panel="photos">
+            <div class="carousel">
+              <div class="carousel-track">
+                <img src="images/product-preview-1.jpg" alt="Number plate keychain, slicer render, view 1" />
+                <img src="images/product-preview-2.jpg" alt="Number plate keychain, slicer render, view 2" />
+              </div>
+              <button class="carousel-nav prev" aria-label="Previous photo">‹</button>
+              <button class="carousel-nav next" aria-label="Next photo">›</button>
+              <div class="carousel-dots"></div>
+            </div>
+          </div>
+
+          <div class="viewer-panel" data-panel="live">
+            <div id="three-canvas-wrap">
+              <canvas id="three-canvas"></canvas>
+              <div id="three-loading">Loading 3D preview…</div>
+            </div>
+          </div>
+
+        </div>
+
+        <p class="viewer-caption">
+          Photos are slicer renders of our own test print. The “Live 3D preview” tab updates as you fill the
+          form, in the same 3 print colours as the real part — white base, black border &amp; vehicle number,
+          red name &amp; contact number. Drag to rotate · scroll to zoom.
+        </p>
       </div>
-      <p class="section-note">Renders below are CAD studio previews of each design. Every piece is enquiry-only — tap Enquire to discuss sizing, colour and lead time over Instagram DM.</p>
-    </div>
 
-    <div class="grid">
+      <!-- RIGHT: product + form -->
+      <div class="info-col">
+        <p class="eyebrow">The 3D Shop · Only product in stock</p>
+        <h1>Custom Number Plate Keychain</h1>
+        <p class="lede">
+          A pocket-sized replica of your vehicle's number plate, 3D-printed in three colours and
+          finished by hand. Add your name and number, or keep it to just the plate — your call.
+        </p>
 
-      <!-- 01 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/grip.svg" alt="ProGrip modular camera handle, line render"></div>
-        <div class="card-body">
-          <span class="card-index">01 · Carry</span>
-          <h3>ProGrip — Modular Camera Handle</h3>
-          <p class="card-desc">A side-mounted grip that clips to any standard camera plate, with a textured palm swell and cold-shoe rail for a mic or light.</p>
-          <div class="card-spec-row"><span>Print · 5h 40m</span><span>PETG‑CF</span></div>
-          <div class="card-price">₹2,800 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
+        <div class="meta-row">
+          <span class="price">₹349 <small>per keychain · enquiry only, no online checkout</small></span>
         </div>
-      </article>
 
-      <!-- 02 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/opener.svg" alt="EZ Twist one-hand jar and can opener, line render"></div>
-        <div class="card-body">
-          <span class="card-index">02 · Kitchen</span>
-          <h3>EZ Twist — One-Hand Jar &amp; Can Opener</h3>
-          <p class="card-desc">A geared, single-hand opener for jars and ring-pull cans, built for grip-strength-friendly kitchens.</p>
-          <div class="card-spec-row"><span>Print · 3h 10m</span><span>PETG</span></div>
-          <div class="card-price">₹1,200 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
+        <div class="spec-chips">
+          <div class="chip"><span class="chip-label">Size</span><span>90 × 22mm</span></div>
+          <div class="chip"><span class="chip-label">Colours</span><span>White · Black · Red</span></div>
+          <div class="chip"><span class="chip-label">Turnaround</span><span>3–5 days</span></div>
         </div>
-      </article>
 
-      <!-- 03 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/petbowl.svg" alt="Named elevated pet bowl stand, line render"></div>
-        <div class="card-body">
-          <span class="card-index">03 · Home &amp; Pet</span>
-          <h3>Named — Elevated Pet Bowl Stand</h3>
-          <p class="card-desc">A tilted, joint-friendly bowl stand with your pet's name routed into the base plate.</p>
-          <div class="card-spec-row"><span>Print · 4h 20m</span><span>PLA‑CF</span></div>
-          <div class="card-price">₹1,800 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
+        <form id="order-form" class="order-form" novalidate>
+          <h2>Customise your plate</h2>
 
-      <!-- 04 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/trailart.svg" alt="Summit Line custom trail relief wall art, line render"></div>
-        <div class="card-body">
-          <span class="card-index">04 · Wall Art</span>
-          <h3>Summit Line — Custom Trail Relief</h3>
-          <p class="card-desc">Your run, ride or trek's elevation profile, printed as a layered relief panel from your GPX file.</p>
-          <div class="card-spec-row"><span>Print · 7h 00m</span><span>PLA</span></div>
-          <div class="card-price">₹4,500 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
+          <div class="field">
+            <label for="vehicleNumber">Vehicle number <span class="req">— always included</span></label>
+            <input id="vehicleNumber" name="vehicleNumber" type="text" maxlength="14"
+                   placeholder="MH 12 AB 3456" autocomplete="off" required />
+            <div class="field-meta"><span id="vehicleCount">0</span>/14 characters · <span class="dot dot-black"></span> black</div>
+          </div>
 
-      <!-- 05 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/clock.svg" alt="Orbit sculptural wall clock, line render"></div>
-        <div class="card-body">
-          <span class="card-index">05 · Home</span>
-          <h3>Orbit — Sculptural Wall Clock</h3>
-          <p class="card-desc">A single continuous ring with a floating dial, hung off-centre for a quiet, sundial-like presence.</p>
-          <div class="card-spec-row"><span>Print · 6h 30m</span><span>PETG</span></div>
-          <div class="card-price">₹3,200 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
+          <div class="field-toggle">
+            <label class="toggle">
+              <input type="checkbox" id="toggleName" />
+              <span>Add owner name</span>
+            </label>
+            <div class="field field-conditional" id="nameField" hidden>
+              <input id="ownerName" name="ownerName" type="text" maxlength="15" placeholder="Suyash" autocomplete="off" />
+              <div class="field-meta"><span id="nameCount">0</span>/15 characters · <span class="dot dot-red"></span> red</div>
+            </div>
+          </div>
 
-      <!-- 06 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/lithophane.svg" alt="Halo custom photo lithophane lamp, line render"></div>
-        <div class="card-body">
-          <span class="card-index">06 · Home</span>
-          <h3>Halo — Custom Photo Lithophane Lamp</h3>
-          <p class="card-desc">Your photo, translated into a backlit relief panel that only reveals itself when lit from within.</p>
-          <div class="card-spec-row"><span>Print · 4h 45m</span><span>Lith‑PLA</span></div>
-          <div class="card-price">₹2,600 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
+          <div class="field-toggle">
+            <label class="toggle">
+              <input type="checkbox" id="toggleContact" />
+              <span>Add contact number</span>
+            </label>
+            <div class="field field-conditional" id="contactField" hidden>
+              <input id="contactNumber" name="contactNumber" type="tel" maxlength="10" placeholder="9876543210" autocomplete="off" inputmode="numeric" />
+              <div class="field-meta"><span id="contactCount">0</span>/10 digits · <span class="dot dot-red"></span> red</div>
+            </div>
+          </div>
 
-      <!-- 07 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/planter.svg" alt="Terra self-watering planter duo, line render"></div>
-        <div class="card-body">
-          <span class="card-index">07 · Plant</span>
-          <h3>Terra — Self-Watering Planter Duo</h3>
-          <p class="card-desc">A wick-fed reservoir base keeps soil evenly moist for up to ten days, no drip trays required.</p>
-          <div class="card-spec-row"><span>Print · 3h 50m</span><span>PETG</span></div>
-          <div class="card-price">₹1,600 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
+          <div class="field">
+            <label for="email">Your email <span class="req">— so we can confirm the order and send you the design</span></label>
+            <input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+          </div>
 
-      <!-- 08 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/bedlamp.svg" alt="Drift organic bedside touch lamp, line render"></div>
-        <div class="card-body">
-          <span class="card-index">08 · Home</span>
-          <h3>Drift — Organic Bedside Touch Lamp</h3>
-          <p class="card-desc">A wind-carved silhouette in translucent PLA with a three-tap dimmer built into the base.</p>
-          <div class="card-spec-row"><span>Print · 8h 15m</span><span>Translucent PLA</span></div>
-          <div class="card-price">₹3,800 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
-
-      <!-- 09 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/cableorg.svg" alt="Weave modular cable and charger organizer, line render"></div>
-        <div class="card-body">
-          <span class="card-index">09 · Desk</span>
-          <h3>Weave — Modular Cable Organiser</h3>
-          <p class="card-desc">Snap-fit channels hold three cables and a charging brick in place, and clip together to grow with your desk.</p>
-          <div class="card-spec-row"><span>Print · 2h 20m</span><span>PETG</span></div>
-          <div class="card-price">₹1,100 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
-
-      <!-- 10 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/nesting.svg" alt="Cove nesting succulent planter set, line render"></div>
-        <div class="card-body">
-          <span class="card-index">10 · Plant</span>
-          <h3>Cove — Nesting Succulent Set</h3>
-          <p class="card-desc">Three faceted planters that nest into one footprint on a shelf, sized for cuttings and small succulents.</p>
-          <div class="card-spec-row"><span>Print · 3h 05m</span><span>PLA‑CF</span></div>
-          <div class="card-price">₹1,400 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
-
-      <!-- 11 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/vase.svg" alt="Arc minimalist print-in-place vase, line render"></div>
-        <div class="card-body">
-          <span class="card-index">11 · Home</span>
-          <h3>Arc — Print-in-Place Vase</h3>
-          <p class="card-desc">A single continuous wall, vase-mode printed in one pass for a seamless, watertight silhouette.</p>
-          <div class="card-spec-row"><span>Print · 3h 30m</span><span>PETG</span></div>
-          <div class="card-price">₹2,200 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
-
-      <!-- 12 -->
-      <article class="card">
-        <div class="card-media"><span class="card-tag">Concept render</span><img src="images/phonestand.svg" alt="Nomad foldable phone and tablet stand, line render"></div>
-        <div class="card-body">
-          <span class="card-index">12 · Carry</span>
-          <h3>Nomad — Foldable Device Stand</h3>
-          <p class="card-desc">A living-hinge stand that folds flat to 8mm for a bag pocket, and holds a phone or small tablet at two angles.</p>
-          <div class="card-spec-row"><span>Print · 2h 45m</span><span>PETG</span></div>
-          <div class="card-price">₹1,300 <span>onwards</span></div>
-          <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary btn-small">Enquire on Instagram</a>
-        </div>
-      </article>
-
-    </div>
-  </div>
-</section>
-
-<!-- ============ PROCESS ============ -->
-<section class="section section-alt plate-grid--ink" id="process">
-  <div class="wrap">
-    <div class="section-head">
-      <div>
-        <span class="section-tag">How it's made</span>
-        <h2>Four steps, one printer, no factory line.</h2>
+          <button type="submit" id="submitBtn" class="btn-primary">Finalise &amp; send design</button>
+          <p id="formStatus" class="form-status" role="status" aria-live="polite"></p>
+        </form>
       </div>
-      <p class="section-note">Every order is queued individually — there's no warehouse stock, so lead time is part of the deal, not a delay.</p>
-    </div>
-    <div class="process">
-      <div><span class="k">01</span><p>Design &amp; slice — model checked, oriented and sliced for the least visible seam.</p></div>
-      <div><span class="k">02</span><p>Print in small batches — 1 to 6 units per run, so colour and finish stay consistent.</p></div>
-      <div><span class="k">03</span><p>Hand-finish &amp; QC — supports removed, edges cleaned, every piece checked before packing.</p></div>
-      <div><span class="k">04</span><p>Ship on request — packed and sent once you've confirmed size, colour and address over DM.</p></div>
-    </div>
-  </div>
-</section>
 
-<!-- ============ ABOUT ============ -->
-<section class="section" id="about">
-  <div class="wrap about-grid">
-    <div class="about-copy">
-      <span class="section-tag">About the shop</span>
-      <h2 style="margin-bottom:22px;">Small studio, precise machines.</h2>
-      <p>The 3D Shop is a one-printer studio based in Pune, India. We design and print small, useful objects — not novelty prints — and finish every piece by hand before it leaves the bench.</p>
-      <p>There's no storefront checkout here on purpose. Every piece is made to order, so sizing, colour and small customisations are worked out over a DM before anything goes on the print bed.</p>
     </div>
-    <div class="material-card">
-      <div class="material-row"><span class="k">Materials in rotation</span><span>PETG · PLA‑CF · TPU</span></div>
-      <div class="material-row"><span class="k">Standard layer height</span><span>0.12mm – 0.20mm</span></div>
-      <div class="material-row"><span class="k">Infill (structural pieces)</span><span>25% – 40%</span></div>
-      <div class="material-row"><span class="k">Typical lead time</span><span>4 – 8 days</span></div>
-      <div class="material-row"><span class="k">Based in</span><span>Pune, Maharashtra</span></div>
-    </div>
-  </div>
-</section>
+  </section>
 
-<!-- ============ CTA BANNER ============ -->
-<section class="cta-banner">
-  <div class="wrap">
-    <h2>Have something specific in mind?</h2>
-    <p>Send a reference photo, a rough size, or just an idea — we'll tell you honestly if it prints well before you commit to anything.</p>
-    <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary">Message us on Instagram</a>
-  </div>
-</section>
+  <section class="how-it-works">
+    <h2>How ordering works</h2>
+    <p class="section-lede">No cart, no online payment — just a design sent straight to us.</p>
+    <ol class="steps">
+      <li>
+        <span class="step-num">01</span>
+        <p>Fill in the fields you want and rotate the live 3D preview until it looks right.</p>
+      </li>
+      <li>
+        <span class="step-num">02</span>
+        <p>Hit “Finalise &amp; send design” — we generate a 3D file of your exact plate.</p>
+      </li>
+      <li>
+        <span class="step-num">03</span>
+        <p>That file lands in our inbox along with your details, and we confirm price and delivery with you directly.</p>
+      </li>
+      <li>
+        <span class="step-num">04</span>
+        <p>Your plate is printed in the 3 colours shown, hand-finished, and shipped.</p>
+      </li>
+    </ol>
+  </section>
 
-<!-- ============ FOOTER ============ -->
+</main>
+
 <footer class="site-footer">
-  <div class="wrap">
-    <div class="footer-grid">
-      <div>
-        <div class="footer-brand"><img src="images/logo.png" alt="The 3D Shop logo"><span>The 3D Shop</span></div>
-        <p style="max-width:320px;">Precision-printed objects, designed and finished by hand in Pune, India.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Shop</h4>
-        <a href="#collection">Collection</a>
-        <a href="#process">Process</a>
-        <a href="#about">About</a>
-      </div>
-      <div class="footer-col">
-        <h4>Connect</h4>
-        <a href="https://www.instagram.com/the3dshop.in?igsh=MXRiZ2d2dmhucjVxcg==" target="_blank" rel="noopener">Instagram</a>
-        <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener">Send a DM</a>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span>© <span id="year"></span> The 3D Shop, Pune, India.</span>
-      <span>All prices in ₹INR. Enquiry only — no online checkout.</span>
-    </div>
+  <div class="footer-brand">
+    <img src="images/logo.svg" alt="" class="brand-mark" />
+    <span>The 3D Shop</span>
   </div>
+  <div class="footer-links">
+    <a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener">Instagram</a>
+    <a href="mailto:theprintingbusiness2026@gmail.com">Email us</a>
+  </div>
+  <p class="footer-fine">© <span id="year"></span> The 3D Shop, Pune, India. All prices in ₹INR. Enquiry only — no online checkout.</p>
 </footer>
 
-<a href="https://ig.me/m/the3dshop.in" target="_blank" rel="noopener" class="btn btn-primary float-enquire">Enquire</a>
-
-<script src="script.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="three-config.js"></script>
+<script type="module" src="script.js"></script>
 </body>
 </html>
