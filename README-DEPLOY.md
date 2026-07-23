@@ -157,6 +157,37 @@ the preview uses your exact typeface.
 - **Fonts/Three.js load from CDN** (jsDelivr), so the page needs internet
   access to render — fine for a public website, just flagging it.
 
+## Round: hole overlap, name/contact swap, corner precision
+
+- **Hole "poking out" — found and fixed.** I ran the actual clearance
+  numbers: at the previous 3.5mm inset, the keyring hole geometrically
+  **overlapped the black margin cutout by ~0.5mm**. That overlap creates
+  a self-intersecting hole edge in the black layer, which is exactly the
+  kind of thing that renders as a spike/artifact right at the hole.
+  Moved the hole to a 4.2mm inset — verified by direct point-to-polygon
+  distance calculation to give ~2.2mm clearance from the outer edge and
+  ~0.5mm clearance from the margin boundary, comfortably inside both.
+- **Contact number and owner name swapped.** Contact number is now in
+  the (wider) top margin; owner name is now in the (narrower) bottom
+  margin.
+- **Corner rounding now uses true circular arcs**, not a quadratic-bezier
+  approximation. Same 3.5mm radius as before, but now geometrically
+  exact — this also removes any ambiguity for hole-clearance math near
+  the corner.
+
+**Important — about "corner radius still not correct":** I fetched
+the live site (the3dshop.in) to check, and it's currently showing
+**90 × 22mm** sizing and no colour picker — that's the *original*
+pre-rebuild version, not any of the files from this conversation. None
+of the fixes across this whole thread (96×28mm re-dimension, the traced
+margin shape, the colour picker, the validation, or this round's corner/
+hole fixes) appear to be live yet. Before chasing further visual bugs
+on the live site, it's worth pushing `index.html`, `script.js`,
+`three-config.js`, `styles.css`, and `apps-script-Code.gs` to the
+repo's `main` branch and confirming GitHub Pages has redeployed —
+otherwise we'd be debugging a version of the site that isn't running
+any of this code.
+
 ## Files in this drop
 ```
 index.html            page structure

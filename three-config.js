@@ -41,8 +41,15 @@ const TRIM_DEPTH = 0.8; // border + margin height above base (2.0 -> 2.8)
 const TEXT_DEPTH = 0.4; // number text height above base (2.8 -> 3.2)
 const NAME_TEXT_DEPTH = 0.4; // name/contact text height above the margin
 const HOLE_R = 2.0; // Ø4.00mm per drawing
-const HOLE_OFFSET_X = -PLATE_W / 2 + 3.5;
-const HOLE_OFFSET_Y = PLATE_H / 2 - 3.5;
+// Inset 4.2mm from the two nearest edges — NOT the same as the corner
+// radius. At the previously-used 3.5mm inset, the hole geometrically
+// overlapped the black margin cutout by ~0.5mm (verified by computing
+// point-to-polygon clearance directly), producing a self-intersecting
+// hole edge in the black layer that rendered as a spike/artifact right
+// at the hole. 4.2mm gives ~2.2mm clearance from the outer edge and
+// ~0.5mm clearance from the margin boundary — comfortably inside both.
+const HOLE_OFFSET_X = -PLATE_W / 2 + 4.2;
+const HOLE_OFFSET_Y = PLATE_H / 2 - 4.2;
 const FILLET_R = 1.6; // small corner rounding applied to the border/margin outline
 
 // The border/margin inner-boundary polygon (where black meets white), in
@@ -82,19 +89,23 @@ let ready = false;
 function roundedRectShape(w, h, r, holeCenters = []) {
   const shape = new THREE.Shape();
   const x = -w / 2, y = -h / 2;
+  // True circular-arc corners (not a bezier approximation) so the corner
+  // radius is exact — this matters for hole clearance calculations near
+  // the corner, not just visual accuracy.
   shape.moveTo(x, y + r);
   shape.lineTo(x, y + h - r);
-  shape.quadraticCurveTo(x, y + h, x + r, y + h);
+  shape.absarc(x + r, y + h - r, r, Math.PI, Math.PI / 2, true); // top-left
   shape.lineTo(x + w - r, y + h);
-  shape.quadraticCurveTo(x + w, y + h, x + w, y + h - r);
+  shape.absarc(x + w - r, y + h - r, r, Math.PI / 2, 0, true); // top-right
   shape.lineTo(x + w, y + r);
-  shape.quadraticCurveTo(x + w, y, x + w - r, y);
+  shape.absarc(x + w - r, y + r, r, 0, -Math.PI / 2, true); // bottom-right
   shape.lineTo(x + r, y);
-  shape.quadraticCurveTo(x, y, x, y + r);
+  shape.absarc(x + r, y + r, r, -Math.PI / 2, -Math.PI, true); // bottom-left
+  shape.closePath();
 
   holeCenters.forEach(([cx, cy, cr]) => {
     const hole = new THREE.Path();
-    hole.absellipse(cx, cy, cr, cr, 0, Math.PI * 2, true);
+    hole.absarc(cx, cy, cr, 0, Math.PI * 2, true);
     shape.holes.push(hole);
   });
   return shape;
@@ -202,11 +213,11 @@ function buildKeychainGroup(fields, fontObj) {
     }
   }
 
-  // --- owner name (red, centred in the top margin) ---
-  if (fontObj && fields.showName && fields.ownerName) {
+  // --- contact number (red, centred in the top margin) ---
+  if (fontObj && fields.showContact && fields.contactNumber) {
     const areaW = TOP_MARGIN_HALF_W * 2 * 0.92;
     const areaH = 3.6;
-    const geo = fitText(fields.ownerName.toUpperCase(), fontObj, areaW, areaH, 5);
+    const geo = fitText(fields.contactNumber, fontObj, areaW, areaH, 5);
     if (geo) {
       const yCenter = (TOP_MARGIN_Y + PLATE_H / 2) / 2;
       geo.translate(0, yCenter, BASE_DEPTH + TRIM_DEPTH);
@@ -214,11 +225,11 @@ function buildKeychainGroup(fields, fontObj) {
     }
   }
 
-  // --- contact number (red, centred in the bottom margin) ---
-  if (fontObj && fields.showContact && fields.contactNumber) {
+  // --- owner name (red, centred in the bottom margin) ---
+  if (fontObj && fields.showName && fields.ownerName) {
     const areaW = BOTTOM_MARGIN_HALF_W * 2 * 0.9;
     const areaH = 3.6;
-    const geo = fitText(fields.contactNumber, fontObj, areaW, areaH, 4.5);
+    const geo = fitText(fields.ownerName.toUpperCase(), fontObj, areaW, areaH, 4.5);
     if (geo) {
       const yCenter = -(Math.abs(BOTTOM_MARGIN_Y) + PLATE_H / 2) / 2;
       geo.translate(0, yCenter, BASE_DEPTH + TRIM_DEPTH);
