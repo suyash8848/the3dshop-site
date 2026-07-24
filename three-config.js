@@ -60,23 +60,80 @@ const TOP_MARGIN_Y = 7.0;
 const TOP_MARGIN_HALF_W = 16.5; // ~33mm flat, per STL trace
 const BOTTOM_MARGIN_Y = -7.0;
 const BOTTOM_MARGIN_HALF_W = 11.5; // ~23mm flat, per STL trace
+// White-region boundary (where black meets white on the base face), traced
+// from the STL z=2.4 cross-section and simplified. Used for TEXT PLACEMENT
+// reference. The black layer itself uses BORDER_CUTOUT_POLY below (this same
+// shape, but merged with the keyring hole).
 const MARGIN_POLY = [
-  [-46.5, -10.5],
-  [-46.5, 10.7],
-  [-45.0, 12.44],
+  [-46.50, -10.50],
+  [-46.49, 10.72],
+  [-44.99, 12.44],
   [-23.58, 12.42],
-  [-16.26, 7.0],
+  [-18.13, 7.65],
+  [-16.26, 7.00],
   [16.59, 7.02],
   [24.07, 12.49],
   [44.76, 12.48],
   [46.48, 10.76],
-  [46.5, -10.5],
+  [46.50, -10.50],
   [44.89, -12.46],
   [18.91, -12.48],
-  [11.26, -7.0],
+  [17.37, -11.85],
+  [13.13, -7.65],
+  [11.26, -7.00],
   [-11.76, -7.05],
   [-18.91, -12.48],
-  [-44.5, -12.5],
+  [-44.50, -12.50],
+  [-45.82, -12.00],
+  [-46.49, -10.63],
+];
+
+// The black layer's actual cutout: MARGIN_POLY unioned with the keyring hole
+// (concentric with the top-left corner, r=2.0). Pre-computed and verified to
+// be a single simple polygon (no self-intersections), so the black extrude
+// is valid. Where the white cutout meets the hole, the boundary follows the
+// hole's arc on the corner side — leaving solid black wrapping the corner and
+// merging the hole into the white void, exactly as the real part is built.
+const BORDER_CUTOUT_POLY = [
+  [-46.50, -10.50],
+  [-46.49, 10.30],
+  [-46.50, 10.49],
+  [-46.49, 10.68],
+  [-46.46, 10.87],
+  [-46.42, 11.06],
+  [-46.36, 11.24],
+  [-46.28, 11.42],
+  [-46.18, 11.58],
+  [-46.07, 11.74],
+  [-45.94, 11.88],
+  [-45.81, 12.02],
+  [-45.65, 12.13],
+  [-45.49, 12.24],
+  [-45.32, 12.32],
+  [-45.14, 12.39],
+  [-44.96, 12.45],
+  [-44.77, 12.48],
+  [-44.58, 12.50],
+  [-44.39, 12.50],
+  [-44.20, 12.48],
+  [-44.01, 12.44],
+  [-23.58, 12.42],
+  [-18.13, 7.65],
+  [-16.26, 7.00],
+  [16.59, 7.02],
+  [24.07, 12.49],
+  [44.76, 12.48],
+  [46.48, 10.76],
+  [46.50, -10.50],
+  [44.89, -12.46],
+  [18.91, -12.48],
+  [17.37, -11.85],
+  [13.13, -7.65],
+  [11.26, -7.00],
+  [-11.76, -7.05],
+  [-18.91, -12.48],
+  [-44.50, -12.50],
+  [-45.82, -12.00],
   [-46.49, -10.63],
 ];
 
@@ -117,6 +174,16 @@ function roundedRectShape(w, h, r, holeCenters = []) {
 function roundedPolygonPath(points, radius, PathClass = THREE.Path) {
   const n = points.length;
   const path = new PathClass();
+
+  // radius 0 -> plain straight-edged polygon (used for BORDER_CUTOUT_POLY,
+  // which already has its rounding/arc baked into the point list).
+  if (radius <= 0) {
+    path.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < n; i++) path.lineTo(points[i][0], points[i][1]);
+    path.closePath();
+    return path;
+  }
+
   for (let i = 0; i < n; i++) {
     const prev = points[(i - 1 + n) % n];
     const curr = points[i];
@@ -139,80 +206,21 @@ function roundedPolygonPath(points, radius, PathClass = THREE.Path) {
   return path;
 }
 
-// The black border+margin layer. The keyring hole sits right on the
-// black/white boundary at the top-left corner: the black border wraps the
-// corner-side of the hole, white base is on the interior side. Cutting a
-// separate full circle here (while the margin polygon also cuts the same
-// area) produces two overlapping hole paths -> a self-intersecting extrude,
-// which is the "poking out" artifact. Instead we build ONE continuous inner
-// boundary: the traced margin polygon, but with its top-left corner routed
-// as an arc around the keyring hole, so the hole and the margin cutout are a
-// single merged cut — exactly as the real STL is modelled.
+// The black border+margin layer. This is the plate outline minus the white
+// face area. IMPORTANT: on this layer the keyring hole and the white margin
+// cutout are merged into ONE polygon (BORDER_CUTOUT_POLY) rather than cut as
+// two separate overlapping paths. The hole is concentric with the top-left
+// corner and tangent to the margin's left edge, so cutting it as a separate
+// circle on top of the margin polygon created two overlapping holes — an
+// invalid, self-intersecting extrude profile (the spike/tear artifact seen
+// in the preview). BORDER_CUTOUT_POLY is the pre-computed, verified union of
+// the white-margin polygon and the hole (0 self-intersections; corner stays
+// black; interior + hole are the white void), so the black layer extrudes
+// cleanly. The white base layer below still cuts the hole as a normal circle.
 function borderMarginShape() {
-  const outer = roundedRectShape(PLATE_W, PLATE_H, CORNER_R); // no separate hole here
-  const innerHole = marginPathWithKeyringNotch();
-  outer.holes.push(innerHole);
+  const outer = roundedRectShape(PLATE_W, PLATE_H, CORNER_R);
+  outer.holes.push(roundedPolygonPath(BORDER_CUTOUT_POLY, 0.0));
   return outer;
-}
-
-// Traces MARGIN_POLY as a rounded path, but where the polygon passes the
-// top-left corner it detours along an arc around the keyring hole, merging
-// the hole into the cutout as a single closed loop.
-function marginPathWithKeyringNotch() {
-  const path = new THREE.Path();
-  const n = MARGIN_POLY.length;
-
-  // The two margin vertices that bracket the keyring corner are the first
-  // ([-46.5,-10.5]) ... actually the top-left run is between the vertices
-  // near (-46.5, 10.7) and (-45.0, 12.44). We detour there.
-  // Simpler + robust: walk the polygon; when a segment's midpoint is within
-  // (HOLE_R + 1.2) of the hole centre, replace that stretch with an arc that
-  // bulges inward around the hole.
-  const cx = HOLE_OFFSET_X, cy = HOLE_OFFSET_Y;
-  const near = (p) => Math.hypot(p[0] - cx, p[1] - cy) < HOLE_R + 2.2;
-
-  // Find the contiguous run of vertices near the hole.
-  let firstNear = -1, lastNear = -1;
-  for (let i = 0; i < n; i++) {
-    if (near(MARGIN_POLY[i])) { if (firstNear < 0) firstNear = i; lastNear = i; }
-  }
-
-  if (firstNear < 0) {
-    // Hole not near the polygon (shouldn't happen) — fall back to plain trace.
-    return roundedPolygonPath(MARGIN_POLY, FILLET_R);
-  }
-
-  // Build the path: normal rounded corners for vertices outside the run,
-  // then an arc around the hole to bridge the gap.
-  const before = MARGIN_POLY[(firstNear - 1 + n) % n];
-  const after = MARGIN_POLY[(lastNear + 1) % n];
-
-  // entry/exit points where the arc meets the polygon, projected onto the
-  // hole circle from the before/after vertices.
-  const angTo = (p) => Math.atan2(p[1] - cy, p[0] - cx);
-  const entryAng = angTo(before);
-  const exitAng = angTo(after);
-
-  // Start tracing from `after`, around the polygon the "long way", back to
-  // `before`, then close with the arc around the hole.
-  let started = false;
-  for (let k = 0; k < n; k++) {
-    const idx = (lastNear + 1 + k) % n;
-    if (idx === firstNear) break; // stop before re-entering the near-run
-    const p = MARGIN_POLY[idx];
-    if (!started) { path.moveTo(p[0], p[1]); started = true; }
-    else path.lineTo(p[0], p[1]);
-  }
-  // now at `before`; draw arc around the hole from entryAng to exitAng.
-  // Route it clockwise (decreasing angle) so the cutout bulges toward the
-  // corner side of the hole — leaving solid black wrapping the corner and
-  // white on the interior side, exactly as the STL is built. (Verified:
-  // this direction leaves the corner black and produces no self-crossing.)
-  let sweep = exitAng - entryAng;
-  while (sweep > 0) sweep -= Math.PI * 2; // force clockwise
-  path.absarc(cx, cy, HOLE_R, entryAng, entryAng + sweep, true);
-  path.closePath();
-  return path;
 }
 
 function extrude(shape, depth, bevel = false) {
@@ -258,6 +266,7 @@ function buildKeychainGroup(fields, fontObj) {
   group.add(baseMesh);
 
   // --- border + top/bottom margins (black) ---
+  // Hole is merged into BORDER_CUTOUT_POLY, so no separate hole is cut here.
   const border = borderMarginShape();
   const borderGeo = extrude(border, TRIM_DEPTH);
   borderGeo.translate(0, 0, BASE_DEPTH);
