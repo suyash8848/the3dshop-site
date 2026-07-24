@@ -2,7 +2,7 @@ import { initViewer, updateModel, exportCombinedSTL, isReady } from "./three-con
 
 // ⚠️ REQUIRED: paste your deployed Google Apps Script Web App URL here.
 // See README-DEPLOY.md — this is what actually sends the design + files by email.
-const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx27SpvO6zM8wsOOj64sStZxHcxLDMkKih_PeLMUsRHWztD1h96gzBq22haSzlW4rVU6w/exec";
 
 document.getElementById("year").textContent = new Date().getFullYear();
 
