@@ -7,12 +7,18 @@
  *
  * The page POSTs JSON as text/plain (to avoid a CORS preflight, which
  * Apps Script web apps can't answer), containing the customer's fields
- * and up to 3 base64-encoded STL files (one per print colour).
+ * and ONE base64-encoded STL file with the complete merged design
+ * (base + border + vehicle number + name/contact, all in one mesh).
  *
  * IMPORTANT: the customer's email is collected and included in the order
  * summary (for the shop's own follow-up), but this script NEVER sends
- * anything to it — the design files and order details go ONLY to
+ * anything to it — the design file and order details go ONLY to
  * SHOP_EMAIL below. There is no confirmation email to the customer.
+ *
+ * NOTE ON COLOUR: a plain STL has no per-region colour/filament data, so
+ * this single file needs its white/black/accent regions assigned in
+ * Bambu Studio's multi-filament "Paint" tool after import (Edit > Color
+ * Painting) — same as any other single-body multi-material model.
  */
 
 const SHOP_EMAIL = "theprintingbusiness2026@gmail.com";
@@ -20,20 +26,18 @@ const SHOP_EMAIL = "theprintingbusiness2026@gmail.com";
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    const { vehicleNumber, ownerName, contactNumber, accentColor, customerEmail, files } = body;
+    const { vehicleNumber, ownerName, contactNumber, accentColor, customerEmail, stlFile } = body;
 
     if (!vehicleNumber || !customerEmail) {
       return jsonOutput({ ok: false, error: "Missing vehicle number or email." });
     }
+    if (!stlFile) {
+      return jsonOutput({ ok: false, error: "Missing design file." });
+    }
 
-    const attachments = [];
     const safeName = vehicleNumber.replace(/[^A-Z0-9]/gi, "");
-    Object.entries(files || {}).forEach(([label, b64]) => {
-      if (!b64) return;
-      const bytes = Utilities.base64Decode(b64);
-      const blob = Utilities.newBlob(bytes, "application/sla", `${safeName}_${label}.stl`);
-      attachments.push(blob);
-    });
+    const bytes = Utilities.base64Decode(stlFile);
+    const blob = Utilities.newBlob(bytes, "application/sla", `${safeName}.stl`);
 
     const summary = [
       `Vehicle number: ${vehicleNumber}`,
@@ -48,8 +52,8 @@ function doPost(e) {
     MailApp.sendEmail({
       to: SHOP_EMAIL,
       subject: `New keychain order — ${vehicleNumber}`,
-      body: `New order from the site:\n\n${summary}\n\nSTL files attached (one per print colour: white/black/${accentColor || "accent"}).`,
-      attachments,
+      body: `New order from the site:\n\n${summary}\n\nOne STL file attached with the complete design (assign filament colours in Bambu Studio's Paint tool).`,
+      attachments: [blob],
     });
 
     return jsonOutput({ ok: true });

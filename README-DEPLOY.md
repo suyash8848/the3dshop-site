@@ -231,6 +231,42 @@ first version:
   script that references `customerEmail` just writes it into the summary
   text — search for "never sends" in the script if you want to verify.
 
+## Round: one combined STL, and a real print-quality bug fixed
+
+Two problems, one root cause each — both fixed:
+
+**1. "Only one STL file, with all the features in it."** Done. The site
+used to export 3 separate STLs (white/black/accent) and email all three.
+`exportCombinedSTL()` in `three-config.js` now merges the entire design —
+base, border/margin, vehicle number, name, contact — into ONE mesh, and
+`apps-script-Code.gs` now expects and attaches a single `stlFile`.
+
+**Important trade-off to know about:** a plain STL has no field for
+per-region colour/filament. The previous 3-file approach existed *because*
+that's the usual way to hand Bambu Studio pre-separated filament regions.
+With one merged file, you'll need to assign the white/black/accent regions
+using Bambu Studio's built-in multi-filament **Paint tool** (Edit > Color
+Painting) after importing, same as with any single-body multi-material
+model. If that turns out to be too much manual work per order, the
+3-file approach is easy to bring back — just say so.
+
+**2. The extra/duplicate perimeter lines in your slicer comparison.** Two
+contributing causes, both real:
+- **`TextGeometry` defaults `bevelEnabled` to `true`** in three.js, and my
+  code never overrode it. That put a small bevel/chamfer around every
+  letter and digit — exactly the second, offset outline you circled
+  around "M", "H", the "0"s, etc. Now explicitly set to `false`.
+- **The 3-separate-file workflow itself.** Bambu Studio auto-arranges
+  newly-imported objects to separate spots on the plate; getting all
+  three re-stacked back to the exact same X/Y by eye is very easy to get
+  slightly wrong, and any tiny misalignment between the base/border/text
+  layers means the slicer traces two near-identical boundaries instead of
+  one clean edge — which is very likely what caused the doubled lines
+  around the rounded corners too. Exporting one pre-merged file (fix #1)
+  removes this failure mode entirely, since there's no separate-file
+  re-alignment step anymore.
+
+
 **Make sure `index.html`, `script.js`, and `apps-script-Code.gs` are
 deployed together as a set** — a mismatch between an old and new version
 of these files (like what caused the console error above) is the most

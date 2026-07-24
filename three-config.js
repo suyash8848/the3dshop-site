@@ -1,8 +1,9 @@
 // three-config.js
 // Builds a live, colour-accurate 3D preview of the number plate keychain and
-// can export the current design as three STL files (white / black / accent) —
-// one per print colour, matching the real 3-colour print workflow. The
-// accent colour (name + contact number) is selectable — red, yellow, or green.
+// can export the current design as ONE merged STL file (base + border +
+// vehicle number + name/contact, all combined into a single mesh) — matching
+// exactly what's shown in the live preview. The accent colour (name +
+// contact number) is selectable — red, yellow, or green.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -242,6 +243,11 @@ function fitText(str, font, maxWidth, maxHeight, sizeGuess) {
     size: sizeGuess,
     height: 1,
     curveSegments: 6,
+    bevelEnabled: false, // three.js defaults this to true — that extra bevel
+    // traces a second offset outline around every letter/digit, which is
+    // exactly the duplicate concentric line the slicer was drawing around
+    // "M", "H", "0", etc. Turning it off makes each glyph a single clean
+    // vertical-walled extrusion, matching the reference CAD part.
   });
   geo.computeBoundingBox();
   const bb = geo.boundingBox;
@@ -440,24 +446,33 @@ function arrayBufferToBase64(buf) {
   return btoa(binary);
 }
 
-export function exportSTLByColor() {
+// Exports the ENTIRE design (base + border/margin + vehicle number +
+// name/contact) as a SINGLE merged STL, matching exactly what's shown in
+// the live preview — no separate per-colour files, no manual re-alignment
+// needed on import. (Previously this exported 3 separate STLs, one per
+// colour; importing those separately into a slicer generally means each
+// gets auto-arranged to its own spot on the plate, and re-stacking them
+// back together by eye introduces tiny XY misalignments — which is what
+// was causing the extra/duplicate perimeter lines seen in slicing,
+// alongside the TextGeometry bevel bug fixed above.)
+//
+// Note: a plain STL has no place to store per-region filament/colour info.
+// This single file has the complete geometry, but assigning which regions
+// print in which filament still needs Bambu Studio's built-in multi-filament
+// "Paint" tool after import (Edit > Color Painting), same as with any
+// single-body multi-material model.
+export function exportCombinedSTL() {
   if (!modelGroup) return null;
   const exporter = new STLExporter();
-  const groups = { white: [], black: [], accent: [] };
-
+  const scene2 = new THREE.Scene();
+  let any = false;
   modelGroup.traverse((obj) => {
     if (obj.isMesh && obj.userData.exportGroup) {
-      groups[obj.userData.exportGroup].push(obj);
+      scene2.add(obj.clone());
+      any = true;
     }
   });
-
-  const out = {};
-  Object.entries(groups).forEach(([color, meshes]) => {
-    if (!meshes.length) { out[color] = null; return; }
-    const scene2 = new THREE.Scene();
-    meshes.forEach((m) => scene2.add(m.clone()));
-    const buf = exporter.parse(scene2, { binary: true });
-    out[color] = arrayBufferToBase64(buf.buffer ? buf.buffer : buf);
-  });
-  return out;
+  if (!any) return null;
+  const buf = exporter.parse(scene2, { binary: true });
+  return arrayBufferToBase64(buf.buffer ? buf.buffer : buf);
 }

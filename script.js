@@ -1,8 +1,8 @@
-import { initViewer, updateModel, exportSTLByColor, isReady } from "./three-config.js";
+import { initViewer, updateModel, exportCombinedSTL, isReady } from "./three-config.js";
 
 // ⚠️ REQUIRED: paste your deployed Google Apps Script Web App URL here.
 // See README-DEPLOY.md — this is what actually sends the design + files by email.
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwpScwW81bITwP1CapCoFGrJ7eNee7AYAYeUrq9kVEg-3mjJoYrHWqjovPdsPQMie0YQQ/exec";
+const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 
 document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -174,8 +174,8 @@ form.addEventListener("submit", async (e) => {
   setStatus("Generating your design file…", null);
 
   try {
-    const stlFiles = exportSTLByColor();
-    if (!stlFiles || !stlFiles.white) throw new Error("Could not generate the 3D file. Please try again.");
+    const stlFile = exportCombinedSTL();
+    if (!stlFile) throw new Error("Could not generate the 3D file. Please try again.");
 
     setStatus("Sending your design to us…", null);
 
@@ -185,11 +185,7 @@ form.addEventListener("submit", async (e) => {
       contactNumber: fields.showContact ? fields.contactNumber : "",
       accentColor: fields.showName || fields.showContact ? fields.accentColor : "",
       customerEmail: email, // for the shop's reference/follow-up only — never emailed to
-      files: {
-        white_base: stlFiles.white,
-        black_border_number: stlFiles.black,
-        accent_name_contact: stlFiles.accent,
-      },
+      stlFile,
     };
 
     if (APPS_SCRIPT_URL.startsWith("PASTE_")) {
