@@ -209,17 +209,33 @@ but the profile math is now consistent with your STEP file, which it
 wasn't before.
 
 
-## Round: customer email removed
+## Round: customer email — re-added, but files still go ONLY to the shop
 
-The order form no longer asks for the customer's email. Submitting sends
-the vehicle number, name/contact (if included), colour choice, and the 3
-STL files straight to `theprintingbusiness2026@gmail.com` — nothing else
-is required from the customer to finalise a design. Apps Script no longer
-expects or emails a `customerEmail`; that field, its validation, and the
-best-effort confirmation email to the customer are all removed. If you
-want a way to reach the customer back, you'd need to add a different
-field (phone/Instagram handle) — right now the plate's own "contact
-number" field is optional and not guaranteed to be filled in.
+The previous round removed the email field entirely. That caused a real
+bug: the `index.html` you had deployed (without the field) got paired
+with an older `script.js` (still expecting one), so `document.
+getElementById("email")` returned `null` and clicking "Finalise" threw
+`Cannot read properties of null (reading 'value')` in the console —
+nothing was ever sent.
+
+The email field is back, but the behaviour is different from the very
+first version:
+- The customer's email is collected and required again (`Your email —
+  so we can confirm your order and delivery`).
+- It's included in the order summary email **only for your own
+  reference/follow-up** — it's in the text of the email that lands in
+  `theprintingbusiness2026@gmail.com`.
+- `apps-script-Code.gs` **never sends anything to the customer's
+  address**. There is no confirmation email, and the STL files are only
+  ever attached to the email sent to `SHOP_EMAIL`. The one line in the
+  script that references `customerEmail` just writes it into the summary
+  text — search for "never sends" in the script if you want to verify.
+
+**Make sure `index.html`, `script.js`, and `apps-script-Code.gs` are
+deployed together as a set** — a mismatch between an old and new version
+of these files (like what caused the console error above) is the most
+likely way this breaks again.
+
 
 ## Files in this drop
 ```

@@ -8,6 +8,11 @@
  * The page POSTs JSON as text/plain (to avoid a CORS preflight, which
  * Apps Script web apps can't answer), containing the customer's fields
  * and up to 3 base64-encoded STL files (one per print colour).
+ *
+ * IMPORTANT: the customer's email is collected and included in the order
+ * summary (for the shop's own follow-up), but this script NEVER sends
+ * anything to it — the design files and order details go ONLY to
+ * SHOP_EMAIL below. There is no confirmation email to the customer.
  */
 
 const SHOP_EMAIL = "theprintingbusiness2026@gmail.com";
@@ -15,10 +20,10 @@ const SHOP_EMAIL = "theprintingbusiness2026@gmail.com";
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    const { vehicleNumber, ownerName, contactNumber, accentColor, files } = body;
+    const { vehicleNumber, ownerName, contactNumber, accentColor, customerEmail, files } = body;
 
-    if (!vehicleNumber) {
-      return jsonOutput({ ok: false, error: "Missing vehicle number." });
+    if (!vehicleNumber || !customerEmail) {
+      return jsonOutput({ ok: false, error: "Missing vehicle number or email." });
     }
 
     const attachments = [];
@@ -35,9 +40,11 @@ function doPost(e) {
       `Owner name: ${ownerName || "(not included)"}`,
       `Contact number on plate: ${contactNumber || "(not included)"}`,
       `Name/contact colour: ${accentColor || "(n/a)"}`,
+      `Customer email (for your follow-up — not emailed by this script): ${customerEmail}`,
       `Submitted: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`,
     ].join("\n");
 
+    // Sent ONLY to the shop. No email is ever sent to customerEmail.
     MailApp.sendEmail({
       to: SHOP_EMAIL,
       subject: `New keychain order — ${vehicleNumber}`,
