@@ -171,42 +171,55 @@ the preview uses your exact typeface.
 - **Fonts/Three.js load from CDN** (jsDelivr), so the page needs internet
   access to render — fine for a public website, just flagging it.
 
-## Round: hole artifact properly diagnosed and fixed
+## Round: hole finally fixed — verified against the new STEP file
 
-The previous two attempts at the hole were wrong. I re-sliced your STL and
-measured the real geometry directly instead of guessing:
+You sent an updated `number_plate.step` (timestamp 2026-07-24). I parsed
+its circle entities directly, which pinned the geometry exactly:
 
-- **The hole is concentric with the top-left rounded corner.** The outer
-  corner arc fits center (3.5, 24.5) radius 3.5mm; the hole loop sits at
-  center (3.48, 24.53) radius 2.0mm — the *same point*, 3.5mm in from each
-  edge. My earlier "move it to 4.2mm inset" was simply wrong.
-- **The hole sits right on the black/white boundary.** Sampling material
-  height around the hole rim: the corner side (up-and-left) is black
-  border; the interior side (down-and-right) is white base. The black
-  wraps the corner side of the hole in a C-shape.
-- **Root cause of the "poking out":** my code cut the keyring hole as a
-  separate full circle *and* cut the margin polygon, and near the corner
-  those two cut-paths overlapped — two overlapping holes in one extrude
-  is a self-intersecting profile, which is what rendered as a spike.
-- **The fix:** on the black layer the hole is no longer a separate circle.
-  The margin cutout's top-left corner now routes as an **arc around the
-  hole**, merging the hole and the cutout into one continuous boundary —
-  exactly how your STL is modelled. I verified the resulting profile in a
-  standalone geometry check: zero self-intersections, nothing outside the
-  plate outline, corner stays black, hole interior stays white. The white
-  base layer still cuts the hole as a normal circle (it has 1.5mm
-  clearance to the outer edge, also verified).
-- **Margin polygon** replaced with coordinates traced directly from the
-  STL cross-section (Douglas–Peucker simplified), so the whole black shape
-  now follows the real part rather than drawing-derived estimates.
-- **Contact number / owner name swap** kept: contact on top, name on
-  bottom.
+- The keyring hole is r=2.0mm at (3.5, 24.5) — and its circle appears at
+  z=0, 2.0 **and** 2.8, while the r=2.0 circles at the other three
+  corners appear only at z=2.0/2.8. So the top-left one is the real
+  through-hole; the others are shallow decorative recesses. It is exactly
+  concentric with the 3.5mm top-left corner.
+- Mapping material heights across the plate showed the true black/white
+  layout: the hole is punched right at the black-border / white-face
+  junction — black wraps its corner side, white is on the interior side.
 
-I could not run an actual Three.js render here (no network to load the
-library), so I validated the 2D extrude profile mathematically instead —
-that's the layer the artifact lives in. Please still eyeball the live
-preview once it's deployed.
+**Why my last two attempts made it worse:** the hole and the white margin
+cutout are effectively tangent at that corner. I was cutting them as two
+separate paths in the same extrude (a circle + the margin polygon), and
+where they touched/overlapped the profile self-intersected — that's the
+spike/tear you saw in the preview.
 
+**The actual fix:** on the black layer the hole is no longer a separate
+circle. I pre-computed the *union* of the white-margin polygon and the
+hole into a single polygon (`BORDER_CUTOUT_POLY`) and cut that one shape.
+I verified it two ways offline: (1) the union polygon has zero
+self-intersections, and (2) a combined render of both layers shows black
+wrapping the corner, a clean hole void, white on the interior, and
+**zero black material inside the hole** — matching the STL's own layout
+map. The white base layer still cuts the hole as a normal circle (1.5mm
+clearance to the outer edge).
+
+**Honest caveat:** I can't run an actual Three.js/WebGL render in this
+environment (no network to load the library), so this is verified by
+reproducing the exact 2D extrude profiles mathematically, not by looking
+at a rendered frame. Please eyeball the live preview once it's deployed —
+but the profile math is now consistent with your STEP file, which it
+wasn't before.
+
+
+## Round: customer email removed
+
+The order form no longer asks for the customer's email. Submitting sends
+the vehicle number, name/contact (if included), colour choice, and the 3
+STL files straight to `theprintingbusiness2026@gmail.com` — nothing else
+is required from the customer to finalise a design. Apps Script no longer
+expects or emails a `customerEmail`; that field, its validation, and the
+best-effort confirmation email to the customer are all removed. If you
+want a way to reach the customer back, you'd need to add a different
+field (phone/Instagram handle) — right now the plate's own "contact
+number" field is optional and not guaranteed to be filled in.
 
 ## Files in this drop
 ```

@@ -61,7 +61,6 @@ const contactInput = document.getElementById("contactNumber");
 const contactCount = document.getElementById("contactCount");
 const accentColorField = document.getElementById("accentColorField");
 const swatches = Array.from(document.querySelectorAll(".swatch"));
-const emailInput = document.getElementById("email");
 const form = document.getElementById("order-form");
 const submitBtn = document.getElementById("submitBtn");
 const formStatus = document.getElementById("formStatus");
@@ -158,7 +157,6 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const fields = currentFields();
-  const email = emailInput.value.trim();
 
   if (!fields.vehicleNumber) { setStatus("Add your vehicle number first.", "is-error"); vehicleInput.focus(); return; }
   if (!isValidVehicleNumber(fields.vehicleNumber)) {
@@ -167,7 +165,6 @@ form.addEventListener("submit", async (e) => {
     vehicleInput.focus();
     return;
   }
-  if (!email) { setStatus("Add your email so we can reach you.", "is-error"); emailInput.focus(); return; }
   if (!isReady()) { setStatus("The 3D preview is still loading — one moment and try again.", "is-error"); return; }
 
   submitBtn.disabled = true;
@@ -184,7 +181,6 @@ form.addEventListener("submit", async (e) => {
       ownerName: fields.showName ? fields.ownerName : "",
       contactNumber: fields.showContact ? fields.contactNumber : "",
       accentColor: fields.showName || fields.showContact ? fields.accentColor : "",
-      customerEmail: email,
       files: {
         white_base: stlFiles.white,
         black_border_number: stlFiles.black,
@@ -206,7 +202,7 @@ form.addEventListener("submit", async (e) => {
     const data = await res.json().catch(() => ({ ok: res.ok }));
     if (!res.ok || data.ok === false) throw new Error(data.error || "Something went wrong sending your design.");
 
-    setStatus("Sent! We'll email you to confirm price and delivery.", "is-ok");
+    setStatus("Sent! Your design and files are on their way to us — we'll be in touch to confirm price and delivery.", "is-ok");
     form.reset();
     toggleName.checked = false; nameField.hidden = true;
     toggleContact.checked = false; contactField.hidden = true;

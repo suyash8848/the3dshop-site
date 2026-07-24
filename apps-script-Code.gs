@@ -15,10 +15,10 @@ const SHOP_EMAIL = "theprintingbusiness2026@gmail.com";
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    const { vehicleNumber, ownerName, contactNumber, accentColor, customerEmail, files } = body;
+    const { vehicleNumber, ownerName, contactNumber, accentColor, files } = body;
 
-    if (!vehicleNumber || !customerEmail) {
-      return jsonOutput({ ok: false, error: "Missing vehicle number or email." });
+    if (!vehicleNumber) {
+      return jsonOutput({ ok: false, error: "Missing vehicle number." });
     }
 
     const attachments = [];
@@ -35,7 +35,6 @@ function doPost(e) {
       `Owner name: ${ownerName || "(not included)"}`,
       `Contact number on plate: ${contactNumber || "(not included)"}`,
       `Name/contact colour: ${accentColor || "(n/a)"}`,
-      `Customer email: ${customerEmail}`,
       `Submitted: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`,
     ].join("\n");
 
@@ -45,19 +44,6 @@ function doPost(e) {
       body: `New order from the site:\n\n${summary}\n\nSTL files attached (one per print colour: white/black/${accentColor || "accent"}).`,
       attachments,
     });
-
-    // Best-effort confirmation to the customer — don't fail the order if this errors.
-    try {
-      MailApp.sendEmail({
-        to: customerEmail,
-        subject: "We've received your keychain design — The 3D Shop",
-        body:
-          `Hi,\n\nThanks — we've received your custom number plate keychain design (${vehicleNumber}).\n` +
-          `We'll confirm final price and delivery with you shortly by email.\n\n— The 3D Shop, Pune`,
-      });
-    } catch (err) {
-      // ignore
-    }
 
     return jsonOutput({ ok: true });
   } catch (err) {
